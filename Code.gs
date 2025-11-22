@@ -25,9 +25,9 @@ function initialSetup() {
   // 테스트 데이터 추가 (StudentDB가 비어있을 경우에만)
   if (studentSheet.getLastRow() === 1) {
     var testData = [
-      [1, 1, '홍길동'],
-      [1, 1, '김철수'],
-      [2, 1, '이영희']
+      ['믿음', 1, '홍길동'],
+      ['믿음', 1, '김철수'],
+      ['소망', 1, '이영희']
     ];
     // 2차원 배열로 한 번에 기록
     studentSheet.getRange(2, 1, testData.length, 3).setValues(testData);
