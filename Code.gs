@@ -276,10 +276,11 @@ function setupAttendanceView(year) {
     var checkboxRange = viewSheet.getRange(2, 5, students.length, sundays.length);
     checkboxRange.insertCheckboxes();
     
-    // 9. 수식 생성
+    // 9. 수식 생성 (날짜만 비교하도록 수정)
     // Response 시트 컬럼: A(Timestamp), B(Grade), C(Class), D(Name)
-    // 조건: Grade=$A2, Class=$B2, Name=$C2, Timestamp=E$1 (날짜 헤더)
-    var formula = '=COUNTIFS(Response!$B:$B, $A2, Response!$C:$C, $B2, Response!$D:$D, $C2, Response!$A:$A, E$1) > 0';
+    // TEXT 함수로 날짜를 문자열로 변환하여 비교 (시간 무시)
+    // 조건: Grade=$A2, Class=$B2, Name=$C2, TEXT(Timestamp)=TEXT(E$1)
+    var formula = '=COUNTIFS(Response!$B:$B, $A2, Response!$C:$C, $B2, Response!$D:$D, $C2, Response!$A:$A, INT(E$1)) > 0';
     checkboxRange.setFormula(formula);
   }
   
