@@ -276,10 +276,10 @@ function setupAttendanceView(year) {
     var checkboxRange = viewSheet.getRange(2, 5, students.length, sundays.length);
     checkboxRange.insertCheckboxes();
     
-    // 9. 수식 생성 (SUMPRODUCT로 날짜 정확히 비교)
+    // 9. 수식 생성 (TEXT 함수로 날짜를 문자열로 변환하여 비교)
     // Response 시트 컬럼: A(Timestamp), B(Grade), C(Class), D(Name)
-    // SUMPRODUCT를 사용하여 각 조건을 AND로 결합하고 날짜는 INT로 비교
-    var formula = '=SUMPRODUCT((Response!$B:$B=$A2)*(Response!$C:$C=$B2)*(Response!$D:$D=$C2)*(INT(Response!$A:$A)=INT(E$1)))>0';
+    // TEXT 함수로 날짜를 yyyy-mm-dd 형식으로 변환하여 비교 (시간 무시, 헤더 오류 방지)
+    var formula = '=SUMPRODUCT((Response!$B:$B=$A2)*(Response!$C:$C=$B2)*(Response!$D:$D=$C2)*(TEXT(Response!$A:$A,"yyyy-mm-dd")=TEXT(E$1,"yyyy-mm-dd")))>0';
     checkboxRange.setFormula(formula);
   }
   
