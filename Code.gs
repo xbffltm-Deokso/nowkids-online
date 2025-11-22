@@ -288,12 +288,7 @@ function setupAttendanceView(year) {
     }
     viewSheet.getRange(2, 5, 1, sundays.length).setNumberFormat('0.0"%"');
     
-    // 11. 체크박스 삽입 (4행부터)
-    var checkboxRange = viewSheet.getRange(4, 5, students.length, sundays.length);
-    checkboxRange.insertCheckboxes();
-    
-    // 12. 체크박스 수식 (각 셀마다 개별적으로 설정)
-    // 각 열의 3행 날짜를 참조하도록 설정
+    // 11. 먼저 모든 셀에 수식 설정
     for (var row = 0; row < students.length; row++) {
       for (var col = 0; col < sundays.length; col++) {
         var colLetter = String.fromCharCode(69 + col); // E, F, G, ...
@@ -302,6 +297,10 @@ function setupAttendanceView(year) {
         viewSheet.getRange(rowNum, 5 + col).setFormula(formula);
       }
     }
+    
+    // 12. 수식 설정 후 체크박스로 변환
+    var checkboxRange = viewSheet.getRange(4, 5, students.length, sundays.length);
+    checkboxRange.insertCheckboxes();
     
     // 13. 개인 출석율 수식 (D열, 4행부터)
     // =COUNTIF(E4:최종열4, TRUE)/(COUNTIF($E$1:$최종열$1, ">0")-COUNTBLANK(E4:최종열4))*100
