@@ -1,0 +1,32 @@
+# [Phase 1] Backend & DB Schema Implementation Plan
+
+## Goal Description
+Implement the Google Apps Script (GAS) backend to manage the Google Sheets database for the attendance system. This includes automatic schema creation and API endpoints for fetching student lists and saving attendance records.
+
+## User Review Required
+- **GAS Deployment**: The user must manually copy the code to the Google Apps Script editor and deploy it as a Web App.
+- **Permissions**: The script requires permissions to access Google Sheets.
+
+## Proposed Changes
+
+### Backend
+#### [NEW] [Code.gs](file:///j:/내 드라이브/온라인 DB/Code.gs)
+- **`initialSetup()`**:
+    - Checks for `Response`, `StudentDB`, `AttendanceView` sheets.
+    - Creates them if missing.
+    - Sets headers.
+    - Populates `StudentDB` with initial test data.
+- **`doGet(e)`**:
+    - Reads `StudentDB`.
+    - Filters by `grade` and `class` parameters.
+    - Returns JSON list of students.
+- **`doPost(e)`**:
+    - Parses JSON body.
+    - Appends rows to `Response` sheet with timestamp.
+    - Returns success JSON.
+
+## Verification Plan
+### Manual Verification
+1.  **Setup**: Run `initialSetup()` in the GAS editor. Verify sheets and headers are created.
+2.  **API Test (doGet)**: Deploy as Web App. Test URL with `?grade=1&class=1`. Verify JSON response.
+3.  **API Test (doPost)**: Send a POST request (e.g., via Postman or curl) with sample data. Verify row is added to `Response` sheet.

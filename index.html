@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>출석체크 시스템</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>출석체크</h1>
+        <div id="dateDisplay" class="date-display"></div>
+
+        <div class="form-group">
+            <label for="gradeSelect">학년 선택</label>
+            <select id="gradeSelect">
+                <option value="" disabled selected>학년을 선택하세요</option>
+                <!-- JS로 옵션 생성 -->
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="classSelect">반 선택</label>
+            <select id="classSelect">
+                <option value="" disabled selected>반을 선택하세요</option>
+                <!-- JS로 옵션 생성 -->
+            </select>
+        </div>
+
+        <button id="startBtn" disabled>출석체크 시작하기</button>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. 오늘 날짜 표시
+            const dateDisplay = document.getElementById('dateDisplay');
+            const today = new Date();
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            dateDisplay.textContent = today.toLocaleDateString('ko-KR', options);
+
+            // 2. 드롭다운 옵션 생성 (config.js의 설정 사용)
+            const gradeSelect = document.getElementById('gradeSelect');
+            const classSelect = document.getElementById('classSelect');
+            const startBtn = document.getElementById('startBtn');
+
+            CONFIG.GRADES.forEach(grade => {
+                const option = document.createElement('option');
+                option.value = grade;
+                option.textContent = `${grade}학년`;
+                gradeSelect.appendChild(option);
+            });
+
+            CONFIG.CLASSES.forEach(cls => {
+                const option = document.createElement('option');
+                option.value = cls;
+                option.textContent = `${cls}반`;
+                classSelect.appendChild(option);
+            });
+
+            // 3. 버튼 활성화/비활성화 로직
+            function checkSelection() {
+                if (gradeSelect.value && classSelect.value) {
+                    startBtn.disabled = false;
+                } else {
+                    startBtn.disabled = true;
+                }
+            }
+
+            gradeSelect.addEventListener('change', checkSelection);
+            classSelect.addEventListener('change', checkSelection);
+
+            // 4. 시작 버튼 클릭 시 이동
+            startBtn.addEventListener('click', () => {
+                const grade = gradeSelect.value;
+                const cls = classSelect.value;
+                // attendance.html로 파라미터와 함께 이동
+                window.location.href = `attendance.html?grade=${grade}&class=${cls}`;
+            });
+        });
+    </script>
+</body>
+</html>
