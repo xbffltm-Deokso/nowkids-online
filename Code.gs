@@ -250,37 +250,60 @@ function setupAttendanceView(year) {
   var fullHeaders = headers.concat(dateHeaders);
   
   viewSheet.getRange(1, 1, 1, fullHeaders.length).setValues([fullHeaders]);
-  viewSheet.setFrozenRows(1);
+  viewSheet.setFrozenRows(3); // 헤더 + 2개 요약 행 고정
   viewSheet.setFrozenColumns(4); // 출석율 컬럼 포함하여 4개 고정
   
-  // 5. 학생 데이터 쓰기
+  // 5. 2행: 세로 출석 합계 (각 날짜별 총 출석자 수)
+  var summaryRow = ['', '', '세로 출석 합계', ''];
+  viewSheet.getRange(2, 1, 1, 4).setValues([summaryRow]);
+  
+  // 6. 3행: 재적 대비 출석율
+  var rateRow = ['', '', '재적 대비 출석율', ''];
+  viewSheet.getRange(3, 1, 1, 4).setValues([rateRow]);
+  
+  // 7. 학생 데이터 쓰기 (4행부터)
   if (students.length > 0) {
-    viewSheet.getRange(2, 1, students.length, 3).setValues(students);
+    viewSheet.getRange(4, 1, students.length, 3).setValues(students);
     
-    // 6. 출석율 공식 추가 (D열)
-    // 출석율 = (출석한 주일 수 / 전체 주일 수) × 100
-    // COUNTIF(E2:ZZ2, TRUE) / COUNTA($E$1:$ZZ$1) * 100
-    var lastCol = String.fromCharCode(64 + 5 + sundays.length - 1); // 5는 E열부터 시작 (1-indexed: A=1, B=2, C=3, D=4, E=5)
-    var attendanceRateFormula = '=IFERROR(COUNTIF(E2:' + lastCol + '2, TRUE) / ' + sundays.length + ' * 100, 0)';
-    
-    var attendanceRateRange = viewSheet.getRange(2, 4, students.length, 1);
-    attendanceRateRange.setFormula(attendanceRateFormula);
-    attendanceRateRange.setNumberFormat('0.0"%"'); // 퍼센트 포맷 (소수점 1자리)
-    
-    // 7. 날짜 헤더를 Date 객체로 넣고 포맷팅
+    // 8. 날짜 헤더를 Date 객체로 넣고 포맷팅
     var dateHeaderRange = viewSheet.getRange(1, 5, 1, sundays.length);
     dateHeaderRange.setValues([sundays]);
     dateHeaderRange.setNumberFormat("M/d");
     
-    // 8. 체크박스 삽입
-    var checkboxRange = viewSheet.getRange(2, 5, students.length, sundays.length);
+    // 9. 세로 출석 합계 수식 (2행, E열부터)
+    // =COUNTIF(E4:E100, TRUE) 형식
+    var lastRow = 4 + students.length - 1;
+    for (var col = 0; col < sundays.length; col++) {
+      var colLetter = String.fromCharCode(69 + col); // E=69
+      var sumFormula = '=COUNTIF(' + colLetter + '4:' + colLetter + lastRow + ', TRUE)';
+      viewSheet.getRange(2, 5 + col).setFormula(sumFormula);
+    }
+    
+    // 10. 재적 대비 출석율 수식 (3행, E열부터)
+    // =E2/학생수*100
+    for (var col = 0; col < sundays.length; col++) {
+      var colLetter = String.fromCharCode(69 + col);
+      var rateFormula = '=' + colLetter + '2/' + students.length + '*100';
+      viewSheet.getRange(3, 5 + col).setFormula(rateFormula);
+    }
+    viewSheet.getRange(3, 5, 1, sundays.length).setNumberFormat('0.0"%"');
+    
+    // 11. 체크박스 삽입 (4행부터)
+    var checkboxRange = viewSheet.getRange(4, 5, students.length, sundays.length);
     checkboxRange.insertCheckboxes();
     
-    // 9. 수식 생성 (TEXT 함수로 날짜를 문자열로 변환하여 비교)
-    // Response 시트 컬럼: A(Timestamp), B(Grade), C(Class), D(Name)
-    // TEXT 함수로 날짜를 yyyy-mm-dd 형식으로 변환하여 비교 (시간 무시, 헤더 오류 방지)
-    var formula = '=SUMPRODUCT((Response!$B:$B=$A2)*(Response!$C:$C=$B2)*(Response!$D:$D=$C2)*(TEXT(Response!$A:$A,"yyyy-mm-dd")=TEXT(E$1,"yyyy-mm-dd")))>0';
+    // 12. 체크박스 수식
+    var formula = '=SUMPRODUCT((Response!$B:$B=$A4)*(Response!$C:$C=$B4)*(Response!$D:$D=$C4)*(TEXT(Response!$A:$A,"yyyy-mm-dd")=TEXT(E$1,"yyyy-mm-dd")))>0';
     checkboxRange.setFormula(formula);
+    
+    // 13. 개인 출석율 수식 (D열, 4행부터)
+    // =COUNTIF(E4:최종열4, TRUE)/(COUNTIF($E$2:$최종열$2, ">0")-COUNTBLANK(E4:최종열4))
+    var lastCol = String.fromCharCode(69 + sundays.length - 1);
+    var attendanceRateFormula = '=IFERROR(COUNTIF(E4:' + lastCol + '4, TRUE)/(COUNTIF($E$2:$' + lastCol + '$2, ">0")-COUNTBLANK(E4:' + lastCol + '4))*100, 0)';
+    
+    var attendanceRateRange = viewSheet.getRange(4, 4, students.length, 1);
+    attendanceRateRange.setFormula(attendanceRateFormula);
+    attendanceRateRange.setNumberFormat('0.0"%"');
   }
   
   Logger.log(sheetName + ' 시트가 생성되었습니다.');
