@@ -122,13 +122,22 @@ function doPost(e) {
       return responseJSON({ error: 'Response 시트를 찾을 수 없습니다.' });
     }
     
+    // 기준 주일 날짜 계산 (인라인 방식)
     var now = new Date();
-    var timestamp = getTargetSunday(new Date(now)); // 오늘이 주일이면 오늘, 아니면 지난 주일
+    var timestamp = new Date(now.getTime()); // 복사본 생성
+    var dayOfWeek = timestamp.getDay(); // 0(일) ~ 6(토)
+    
+    // 주일(일요일)까지 되돌리기
+    timestamp.setDate(timestamp.getDate() - dayOfWeek);
+    
+    // 시간을 00:00:00으로 초기화
+    timestamp.setHours(0, 0, 0, 0);
     
     // 디버그 로그
-    Logger.log('현재 시각: ' + now);
+    Logger.log('원본 시각: ' + now);
     Logger.log('계산된 기준 주일: ' + timestamp);
-    Logger.log('timestamp 요일: ' + timestamp.getDay()); // 0이어야 함 (일요일)
+    Logger.log('주일 요일 확인: ' + timestamp.getDay() + ' (0=일요일)');
+    Logger.log('저장될 날짜: ' + timestamp.getFullYear() + '-' + (timestamp.getMonth()+1) + '-' + timestamp.getDate());
     
     var newRows = [];
     
@@ -285,4 +294,23 @@ function setupAttendanceView2025() {
 // 편의 함수: 2026년 출석부 생성
 function setupAttendanceView2026() {
   setupAttendanceView(2026);
+}
+
+// ⭐ 테스트 함수: getTargetSunday가 제대로 작동하는지 확인
+function testGetTargetSunday() {
+  var today = new Date(); // 2025-11-22 토요일
+  var result = getTargetSunday(today);
+  
+  Logger.log('오늘: ' + today);
+  Logger.log('오늘 요일: ' + today.getDay() + ' (0=일요일, 6=토요일)');
+  Logger.log('계산된 주일: ' + result);
+  Logger.log('계산된 주일 요일: ' + result.getDay() + ' (0이어야 함)');
+  Logger.log('계산된 날짜: ' + result.getFullYear() + '-' + (result.getMonth()+1) + '-' + result.getDate());
+  
+  // 11월 22일(토)이면 11월 16일(일)이 나와야 함
+  if (result.getDate() === 16 && result.getMonth() === 10) { // 월은 0부터 시작
+    Logger.log('✅ SUCCESS: 올바른 주일 계산!');
+  } else {
+    Logger.log('❌ ERROR: 잘못된 계산!');
+  }
 }
