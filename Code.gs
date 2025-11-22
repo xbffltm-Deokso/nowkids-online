@@ -161,15 +161,29 @@ function responseJSON(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// 4. 출석부 시트 자동 생성 함수 (AttendanceView 시트용 - 체크박스 버전)
-function setupAttendanceView() {
+// 4. 출석부 시트 자동 생성 함수 (연도별 시트 - 체크박스 + 출석율)
+function setupAttendanceView(year) {
+  // 기본값: 현재 연도
+  if (!year) {
+    year = new Date().getFullYear();
+  }
+  
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var studentSheet = ss.getSheetByName('StudentDB');
   var responseSheet = ss.getSheetByName('Response');
-  var viewSheet = ss.getSheetByName('AttendanceView');
   
-  if (!studentSheet || !responseSheet || !viewSheet) {
-    Logger.log('필요한 시트(StudentDB, Response, AttendanceView)가 없습니다.');
+  // 연도별 시트 이름
+  var sheetName = 'AttendanceView_' + year;
+  var viewSheet = ss.getSheetByName(sheetName);
+  
+  // 시트가 없으면 생성
+  if (!viewSheet) {
+    viewSheet = ss.insertSheet(sheetName);
+    Logger.log(sheetName + ' 시트가 생성되었습니다.');
+  }
+  
+  if (!studentSheet || !responseSheet) {
+    Logger.log('필요한 시트(StudentDB, Response)가 없습니다.');
     return;
   }
   
@@ -191,24 +205,23 @@ function setupAttendanceView() {
     return a[2] < b[2] ? -1 : 1; // 이름
   });
   
-  // 3. 날짜 헤더 생성 (올해의 모든 일요일)
-  var year = new Date().getFullYear();
+  // 3. 날짜 헤더 생성 (해당 연도의 모든 주일)
   var sundays = [];
   var date = new Date(year, 0, 1);
   
-  // 첫 번째 일요일 찾기
+  // 첫 번째 주일 찾기
   while (date.getDay() !== 0) {
     date.setDate(date.getDate() + 1);
   }
   
-  // 1년치 일요일 수집
+  // 1년치 주일 수집
   while (date.getFullYear() === year) {
     sundays.push(new Date(date));
     date.setDate(date.getDate() + 7);
   }
   
-  // 4. 헤더 쓰기
-  var headers = ['학년', '반', '이름'];
+  // 4. 헤더 쓰기 (학년, 반, 이름, 출석율, 날짜들...)
+  var headers = ['학년', '반', '이름', '출석율'];
   // 날짜 포맷팅 (M/d)
   var dateHeaders = sundays.map(function(d) {
     return (d.getMonth() + 1) + '/' + d.getDate();
@@ -217,37 +230,47 @@ function setupAttendanceView() {
   
   viewSheet.getRange(1, 1, 1, fullHeaders.length).setValues([fullHeaders]);
   viewSheet.setFrozenRows(1);
-  viewSheet.setFrozenColumns(3);
+  viewSheet.setFrozenColumns(4); // 출석율 컬럼 포함하여 4개 고정
   
   // 5. 학생 데이터 쓰기
   if (students.length > 0) {
     viewSheet.getRange(2, 1, students.length, 3).setValues(students);
     
-    // 6. 체크박스 및 수식 적용
-    // COUNTIFS(Response!$B:$B, $A2, Response!$C:$C, $B2, Response!$D:$D, $C2, Response!$A:$A, D$1)
-    // A2: 학년, B2: 반, C2: 이름, D1: 날짜(헤더)
-    // 주의: 헤더의 날짜가 텍스트일 수 있으므로, 실제 데이터 비교를 위해 날짜 객체 매칭이 필요함.
-    // Apps Script에서 수식을 넣을 때 날짜 비교가 까다로울 수 있음.
-    // 대안: Response 시트의 Timestamp가 Date 객체라면, COUNTIFS에서 날짜 비교 가능.
-    // 다만 헤더가 문자열이면 비교가 안됨. 헤더를 날짜 객체로 넣고 포맷팅하는 것이 좋음.
+    // 6. 출석율 공식 추가 (D열)
+    // 출석율 = (출석한 주일 수 / 전체 주일 수) × 100
+    // COUNTIF(E2:ZZ2, TRUE) / COUNTA($E$1:$ZZ$1) * 100
+    var lastCol = String.fromCharCode(64 + 5 + sundays.length - 1); // 5는 E열부터 시작 (1-indexed: A=1, B=2, C=3, D=4, E=5)
+    var attendanceRateFormula = '=IFERROR(COUNTIF(E2:' + lastCol + '2, TRUE) / ' + sundays.length + ' * 100, 0)';
     
-    // 날짜 헤더를 다시 Date 객체로 넣고 포맷팅
-    var dateHeaderRange = viewSheet.getRange(1, 4, 1, sundays.length);
+    var attendanceRateRange = viewSheet.getRange(2, 4, students.length, 1);
+    attendanceRateRange.setFormula(attendanceRateFormula);
+    attendanceRateRange.setNumberFormat('0.0"%"'); // 퍼센트 포맷 (소수점 1자리)
+    
+    // 7. 날짜 헤더를 Date 객체로 넣고 포맷팅
+    var dateHeaderRange = viewSheet.getRange(1, 5, 1, sundays.length);
     dateHeaderRange.setValues([sundays]);
     dateHeaderRange.setNumberFormat("M/d");
     
-    // 체크박스 삽입
-    var checkboxRange = viewSheet.getRange(2, 4, students.length, sundays.length);
+    // 8. 체크박스 삽입
+    var checkboxRange = viewSheet.getRange(2, 5, students.length, sundays.length);
     checkboxRange.insertCheckboxes();
     
-    // 수식 생성 (R1C1 표기법 사용이 편리함)
+    // 9. 수식 생성
     // Response 시트 컬럼: A(Timestamp), B(Grade), C(Class), D(Name)
-    // 조건: Grade=RxC1, Class=RxC2, Name=RxC3, Timestamp=R1Cx
-    // Timestamp는 날짜만 비교해야 하는데 Response에는 시간도 있을 수 있음 -> getTargetSunday로 00:00:00 처리했으므로 정확히 일치해야 함.
-    
-    var formula = '=COUNTIFS(Response!$B:$B, $A2, Response!$C:$C, $B2, Response!$D:$D, $C2, Response!$A:$A, D$1) > 0';
+    // 조건: Grade=$A2, Class=$B2, Name=$C2, Timestamp=E$1 (날짜 헤더)
+    var formula = '=COUNTIFS(Response!$B:$B, $A2, Response!$C:$C, $B2, Response!$D:$D, $C2, Response!$A:$A, E$1) > 0';
     checkboxRange.setFormula(formula);
   }
   
-  Logger.log('AttendanceView 시트가 생성되었습니다.');
+  Logger.log(sheetName + ' 시트가 생성되었습니다.');
+}
+
+// 편의 함수: 2025년 출석부 생성
+function setupAttendanceView2025() {
+  setupAttendanceView(2025);
+}
+
+// 편의 함수: 2026년 출석부 생성
+function setupAttendanceView2026() {
+  setupAttendanceView(2026);
 }
