@@ -152,13 +152,19 @@ function doPost(e) {
   }
 }
 
-// 헬퍼 함수: 기준 일요일 계산 (오늘이 일요일이면 오늘, 아니면 지난 일요일 반환)
+// 헬퍼 함수: 기준 주일 계산 (오늘이 주일이면 오늘, 아니면 지난 주일 반환)
 function getTargetSunday(date) {
-  var day = date.getDay(); // 0(일) ~ 6(토)
-  var diff = date.getDate() - day; 
-  var targetDate = new Date(date.setDate(diff));
-  targetDate.setHours(0, 0, 0, 0); // 시간 초기화 (날짜 비교 정확도 향상)
-  return targetDate;
+  // 새로운 Date 객체를 생성하여 원본을 수정하지 않음
+  var result = new Date(date.getTime());
+  var day = result.getDay(); // 0(일) ~ 6(토)
+  
+  // 주일까지의 일수 차이 계산 (일요일이면 0, 월요일이면 -1, 토요일이면 -6)
+  result.setDate(result.getDate() - day);
+  
+  // 시간을 00:00:00으로 초기화
+  result.setHours(0, 0, 0, 0);
+  
+  return result;
 }
 
 // 헬퍼 함수: JSON 응답 생성 (CORS 해결 포함)
