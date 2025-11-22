@@ -241,7 +241,7 @@ function setupAttendanceView(year) {
     date.setDate(date.getDate() + 7);
   }
   
-  // 4. 헤더 쓰기 (학년, 반, 이름, 출석율, 날짜들...)
+  // 4. 헤더 쓰기 (3행에 배치)
   var headers = ['학년', '반', '이름', '출석율'];
   // 날짜 포맷팅 (M/d)
   var dateHeaders = sundays.map(function(d) {
@@ -249,57 +249,57 @@ function setupAttendanceView(year) {
   });
   var fullHeaders = headers.concat(dateHeaders);
   
-  viewSheet.getRange(1, 1, 1, fullHeaders.length).setValues([fullHeaders]);
-  viewSheet.setFrozenRows(3); // 헤더 + 2개 요약 행 고정
+  viewSheet.getRange(3, 1, 1, fullHeaders.length).setValues([fullHeaders]);
+  viewSheet.setFrozenRows(3); // 합계 + 출석율 + 헤더 고정
   viewSheet.setFrozenColumns(4); // 출석율 컬럼 포함하여 4개 고정
   
-  // 5. 2행: 세로 출석 합계 (각 날짜별 총 출석자 수)
-  var summaryRow = ['', '', '세로 출석 합계', ''];
-  viewSheet.getRange(2, 1, 1, 4).setValues([summaryRow]);
+  // 5. 1행: 세로 출석 합계 (각 날짜별 총 출석자 수)
+  var summaryRow = ['', '', '출석합계', ''];
+  viewSheet.getRange(1, 1, 1, 4).setValues([summaryRow]);
   
-  // 6. 3행: 재적 대비 출석율
-  var rateRow = ['', '', '재적 대비 출석율', ''];
-  viewSheet.getRange(3, 1, 1, 4).setValues([rateRow]);
+  // 6. 2행: 재적 대비 출석율
+  var rateRow = ['', '', '출석율', ''];
+  viewSheet.getRange(2, 1, 1, 4).setValues([rateRow]);
   
   // 7. 학생 데이터 쓰기 (4행부터)
   if (students.length > 0) {
     viewSheet.getRange(4, 1, students.length, 3).setValues(students);
     
-    // 8. 날짜 헤더를 Date 객체로 넣고 포맷팅
-    var dateHeaderRange = viewSheet.getRange(1, 5, 1, sundays.length);
+    // 8. 날짜 헤더를 Date 객체로 넣고 포맷팅 (3행)
+    var dateHeaderRange = viewSheet.getRange(3, 5, 1, sundays.length);
     dateHeaderRange.setValues([sundays]);
     dateHeaderRange.setNumberFormat("M/d");
     
-    // 9. 세로 출석 합계 수식 (2행, E열부터)
+    // 9. 세로 출석 합계 수식 (1행, E열부터)
     // =COUNTIF(E4:E100, TRUE) 형식
     var lastRow = 4 + students.length - 1;
     for (var col = 0; col < sundays.length; col++) {
       var colLetter = String.fromCharCode(69 + col); // E=69
       var sumFormula = '=COUNTIF(' + colLetter + '4:' + colLetter + lastRow + ', TRUE)';
-      viewSheet.getRange(2, 5 + col).setFormula(sumFormula);
+      viewSheet.getRange(1, 5 + col).setFormula(sumFormula);
     }
     
-    // 10. 재적 대비 출석율 수식 (3행, E열부터)
-    // =E2/학생수*100
+    // 10. 재적 대비 출석율 수식 (2행, E열부터)
+    // =E1/학생수*100
     for (var col = 0; col < sundays.length; col++) {
       var colLetter = String.fromCharCode(69 + col);
-      var rateFormula = '=' + colLetter + '2/' + students.length + '*100';
-      viewSheet.getRange(3, 5 + col).setFormula(rateFormula);
+      var rateFormula = '=' + colLetter + '1/' + students.length + '*100';
+      viewSheet.getRange(2, 5 + col).setFormula(rateFormula);
     }
-    viewSheet.getRange(3, 5, 1, sundays.length).setNumberFormat('0.0"%"');
+    viewSheet.getRange(2, 5, 1, sundays.length).setNumberFormat('0.0"%"');
     
     // 11. 체크박스 삽입 (4행부터)
     var checkboxRange = viewSheet.getRange(4, 5, students.length, sundays.length);
     checkboxRange.insertCheckboxes();
     
-    // 12. 체크박스 수식
-    var formula = '=SUMPRODUCT((Response!$B:$B=$A4)*(Response!$C:$C=$B4)*(Response!$D:$D=$C4)*(TEXT(Response!$A:$A,"yyyy-mm-dd")=TEXT(E$1,"yyyy-mm-dd")))>0';
+    // 12. 체크박스 수식 (3행이 헤더이므로 참조 변경)
+    var formula = '=SUMPRODUCT((Response!$B:$B=$A4)*(Response!$C:$C=$B4)*(Response!$D:$D=$C4)*(TEXT(Response!$A:$A,"yyyy-mm-dd")=TEXT(E$3,"yyyy-mm-dd")))>0';
     checkboxRange.setFormula(formula);
     
     // 13. 개인 출석율 수식 (D열, 4행부터)
-    // =COUNTIF(E4:최종열4, TRUE)/(COUNTIF($E$2:$최종열$2, ">0")-COUNTBLANK(E4:최종열4))
+    // =COUNTIF(E4:최종열4, TRUE)/(COUNTIF($E$1:$최종열$1, ">0")-COUNTBLANK(E4:최종열4))*100
     var lastCol = String.fromCharCode(69 + sundays.length - 1);
-    var attendanceRateFormula = '=IFERROR(COUNTIF(E4:' + lastCol + '4, TRUE)/(COUNTIF($E$2:$' + lastCol + '$2, ">0")-COUNTBLANK(E4:' + lastCol + '4))*100, 0)';
+    var attendanceRateFormula = '=IFERROR(COUNTIF(E4:' + lastCol + '4, TRUE)/(COUNTIF($E$1:$' + lastCol + '$1, ">0")-COUNTBLANK(E4:' + lastCol + '4))*100, 0)';
     
     var attendanceRateRange = viewSheet.getRange(4, 4, students.length, 1);
     attendanceRateRange.setFormula(attendanceRateFormula);
