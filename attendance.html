@@ -47,22 +47,6 @@
             const cls = urlParams.get('class');
 
             // 파라미터 검증
-            if (!grade || !cls) {
-                alert('잘못된 접근입니다. 메인 페이지로 이동합니다.');
-                window.location.href = 'index.html';
-                return;
-            }
-
-            // UI 초기화
-            document.getElementById('pageTitle').textContent = `${grade} ${cls}반 출석체크`;
-            document.getElementById('todayDate').textContent = new Date().toLocaleDateString('ko-KR', {
-                year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
-            });
-
-            // 2. 학생 명단 가져오기 (doGet)
-            fetchStudents(grade, cls);
-
-            // 3. 폼 제출 처리 (doPost)
             document.getElementById('attendanceForm').addEventListener('submit', (e) => {
                 e.preventDefault();
                 submitAttendance(grade, cls);

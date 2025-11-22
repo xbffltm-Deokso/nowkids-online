@@ -122,7 +122,8 @@ function doPost(e) {
       return responseJSON({ error: 'Response 시트를 찾을 수 없습니다.' });
     }
     
-    var timestamp = new Date();
+    var now = new Date();
+    var timestamp = getTargetSunday(new Date(now)); // 오늘이 일요일이면 오늘, 아니면 지난 일요일
     var newRows = [];
     
     // 학생 1명당 1행씩 데이터 생성
@@ -143,6 +144,13 @@ function doPost(e) {
   } catch (err) {
     return responseJSON({ error: err.toString() });
   }
+}
+
+// 헬퍼 함수: 기준 일요일 계산 (오늘이 일요일이면 오늘, 아니면 지난 일요일 반환)
+function getTargetSunday(date) {
+  var day = date.getDay(); // 0(일) ~ 6(토)
+  var diff = date.getDate() - day; 
+  return new Date(date.setDate(diff));
 }
 
 // 헬퍼 함수: JSON 응답 생성 (CORS 해결 포함)
