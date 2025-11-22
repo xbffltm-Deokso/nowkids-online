@@ -123,7 +123,13 @@ function doPost(e) {
     }
     
     var now = new Date();
-    var timestamp = getTargetSunday(new Date(now)); // 오늘이 일요일이면 오늘, 아니면 지난 일요일
+    var timestamp = getTargetSunday(new Date(now)); // 오늘이 주일이면 오늘, 아니면 지난 주일
+    
+    // 디버그 로그
+    Logger.log('현재 시각: ' + now);
+    Logger.log('계산된 기준 주일: ' + timestamp);
+    Logger.log('timestamp 요일: ' + timestamp.getDay()); // 0이어야 함 (일요일)
+    
     var newRows = [];
     
     // 학생 1명당 1행씩 데이터 생성
