@@ -29,41 +29,62 @@
             </select>
         </div>
 
-        CONFIG.GRADES.forEach(grade => {
-        const option = document.createElement('option');
-        option.value = grade;
-        option.textContent = `${grade}`;
-        gradeSelect.appendChild(option);
-        });
+        <button id="startBtn" disabled>출석체크 시작하기</button>
+    </div>
 
-        CONFIG.CLASSES.forEach(cls => {
-        const option = document.createElement('option');
-        option.value = cls;
-        option.textContent = `${cls}반`;
-        classSelect.appendChild(option);
-        });
+    <script src="config.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. 오늘 날짜 표시 (기준 일요일 계산)
+            const dateDisplay = document.getElementById('dateDisplay');
+            const today = new Date();
+            const day = today.getDay(); // 0(일) ~ 6(토)
+            const diff = today.getDate() - day;
+            const targetSunday = new Date(today.setDate(diff));
 
-        // 3. 버튼 활성화/비활성화 로직
-        function checkSelection() {
-        if (gradeSelect.value && classSelect.value) {
-        startBtn.disabled = false;
-        } else {
-        startBtn.disabled = true;
-        }
-        }
+            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+            dateDisplay.textContent = `출석 기준일: ${targetSunday.toLocaleDateString('ko-KR', options)}`;
 
-        gradeSelect.addEventListener('change', checkSelection);
-        classSelect.addEventListener('change', checkSelection);
+            // 2. 드롭다운 옵션 생성 (config.js의 설정 사용)
+            const gradeSelect = document.getElementById('gradeSelect');
+            const classSelect = document.getElementById('classSelect');
+            const startBtn = document.getElementById('startBtn');
 
-        // 4. 시작 버튼 클릭 시 이동
-        startBtn.addEventListener('click', () => {
-        const grade = gradeSelect.value;
-        const cls = classSelect.value;
-        // attendance.html로 파라미터와 함께 이동
-        window.location.href = `attendance.html?grade=${grade}&class=${cls}`;
+            CONFIG.GRADES.forEach(grade => {
+                const option = document.createElement('option');
+                option.value = grade;
+                option.textContent = `${grade}`;
+                gradeSelect.appendChild(option);
+            });
+
+            CONFIG.CLASSES.forEach(cls => {
+                const option = document.createElement('option');
+                option.value = cls;
+                option.textContent = `${cls}반`;
+                classSelect.appendChild(option);
+            });
+
+            // 3. 버튼 활성화/비활성화 로직
+            function checkSelection() {
+                if (gradeSelect.value && classSelect.value) {
+                    startBtn.disabled = false;
+                } else {
+                    startBtn.disabled = true;
+                }
+            }
+
+            gradeSelect.addEventListener('change', checkSelection);
+            classSelect.addEventListener('change', checkSelection);
+
+            // 4. 시작 버튼 클릭 시 이동
+            startBtn.addEventListener('click', () => {
+                const grade = gradeSelect.value;
+                const cls = classSelect.value;
+                // attendance.html로 파라미터와 함께 이동
+                window.location.href = `attendance.html?grade=${grade}&class=${cls}`;
+            });
         });
-        });
-        </script>
+    </script>
 </body>
 
 </html>
