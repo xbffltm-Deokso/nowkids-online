@@ -56,15 +56,14 @@
             // UI 초기화
             document.getElementById('pageTitle').textContent = `${grade} ${cls}반 출석체크`;
 
-            // 날짜 표시 (기준 일요일)
+            // 날짜 표시 (기준 주일)
             const today = new Date();
             const day = today.getDay();
             const diff = today.getDate() - day;
             const targetSunday = new Date(today.setDate(diff));
 
-            document.getElementById('todayDate').textContent = targetSunday.toLocaleDateString('ko-KR', {
-                year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
-            });
+            const dateOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('todayDate').textContent = targetSunday.toLocaleDateString('ko-KR', dateOptions);
 
             // 2. 학생 명단 가져오기 (doGet)
             fetchStudents(grade, cls);

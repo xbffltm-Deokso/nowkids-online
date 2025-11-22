@@ -35,15 +35,15 @@
     <script src="config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. 오늘 날짜 표시 (기준 일요일 계산)
+            // 1. 오늘 날짜 표시 (기준 주일 계산)
             const dateDisplay = document.getElementById('dateDisplay');
             const today = new Date();
             const day = today.getDay(); // 0(일) ~ 6(토)
             const diff = today.getDate() - day;
             const targetSunday = new Date(today.setDate(diff));
 
-            const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
-            dateDisplay.textContent = `출석 기준일: ${targetSunday.toLocaleDateString('ko-KR', options)}`;
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            dateDisplay.textContent = `출석 기준 주일: ${targetSunday.toLocaleDateString('ko-KR', options)}`;
 
             // 2. 드롭다운 옵션 생성 (config.js의 설정 사용)
             const gradeSelect = document.getElementById('gradeSelect');

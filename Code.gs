@@ -150,11 +150,104 @@ function doPost(e) {
 function getTargetSunday(date) {
   var day = date.getDay(); // 0(일) ~ 6(토)
   var diff = date.getDate() - day; 
-  return new Date(date.setDate(diff));
+  var targetDate = new Date(date.setDate(diff));
+  targetDate.setHours(0, 0, 0, 0); // 시간 초기화 (날짜 비교 정확도 향상)
+  return targetDate;
 }
 
 // 헬퍼 함수: JSON 응답 생성 (CORS 해결 포함)
 function responseJSON(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// 4. 출석부 시트 자동 생성 함수 (AttendanceView 시트용 - 체크박스 버전)
+function setupAttendanceView() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var studentSheet = ss.getSheetByName('StudentDB');
+  var responseSheet = ss.getSheetByName('Response');
+  var viewSheet = ss.getSheetByName('AttendanceView');
+  
+  if (!studentSheet || !responseSheet || !viewSheet) {
+    Logger.log('필요한 시트(StudentDB, Response, AttendanceView)가 없습니다.');
+    return;
+  }
+  
+  // 1. 기존 내용 초기화
+  viewSheet.clear();
+  
+  // 2. 학생 명단 가져오기 (학년, 반, 이름 정렬)
+  var studentData = studentSheet.getDataRange().getValues();
+  var students = [];
+  // 헤더 제외하고 데이터만 추출
+  for (var i = 1; i < studentData.length; i++) {
+    students.push(studentData[i]);
+  }
+  
+  // 정렬: 학년 -> 반 -> 이름 순
+  students.sort(function(a, b) {
+    if (a[0] !== b[0]) return a[0] < b[0] ? -1 : 1; // 학년 (문자열 비교)
+    if (a[1] !== b[1]) return a[1] - b[1]; // 반 (숫자 비교)
+    return a[2] < b[2] ? -1 : 1; // 이름
+  });
+  
+  // 3. 날짜 헤더 생성 (올해의 모든 일요일)
+  var year = new Date().getFullYear();
+  var sundays = [];
+  var date = new Date(year, 0, 1);
+  
+  // 첫 번째 일요일 찾기
+  while (date.getDay() !== 0) {
+    date.setDate(date.getDate() + 1);
+  }
+  
+  // 1년치 일요일 수집
+  while (date.getFullYear() === year) {
+    sundays.push(new Date(date));
+    date.setDate(date.getDate() + 7);
+  }
+  
+  // 4. 헤더 쓰기
+  var headers = ['학년', '반', '이름'];
+  // 날짜 포맷팅 (M/d)
+  var dateHeaders = sundays.map(function(d) {
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  });
+  var fullHeaders = headers.concat(dateHeaders);
+  
+  viewSheet.getRange(1, 1, 1, fullHeaders.length).setValues([fullHeaders]);
+  viewSheet.setFrozenRows(1);
+  viewSheet.setFrozenColumns(3);
+  
+  // 5. 학생 데이터 쓰기
+  if (students.length > 0) {
+    viewSheet.getRange(2, 1, students.length, 3).setValues(students);
+    
+    // 6. 체크박스 및 수식 적용
+    // COUNTIFS(Response!$B:$B, $A2, Response!$C:$C, $B2, Response!$D:$D, $C2, Response!$A:$A, D$1)
+    // A2: 학년, B2: 반, C2: 이름, D1: 날짜(헤더)
+    // 주의: 헤더의 날짜가 텍스트일 수 있으므로, 실제 데이터 비교를 위해 날짜 객체 매칭이 필요함.
+    // Apps Script에서 수식을 넣을 때 날짜 비교가 까다로울 수 있음.
+    // 대안: Response 시트의 Timestamp가 Date 객체라면, COUNTIFS에서 날짜 비교 가능.
+    // 다만 헤더가 문자열이면 비교가 안됨. 헤더를 날짜 객체로 넣고 포맷팅하는 것이 좋음.
+    
+    // 날짜 헤더를 다시 Date 객체로 넣고 포맷팅
+    var dateHeaderRange = viewSheet.getRange(1, 4, 1, sundays.length);
+    dateHeaderRange.setValues([sundays]);
+    dateHeaderRange.setNumberFormat("M/d");
+    
+    // 체크박스 삽입
+    var checkboxRange = viewSheet.getRange(2, 4, students.length, sundays.length);
+    checkboxRange.insertCheckboxes();
+    
+    // 수식 생성 (R1C1 표기법 사용이 편리함)
+    // Response 시트 컬럼: A(Timestamp), B(Grade), C(Class), D(Name)
+    // 조건: Grade=RxC1, Class=RxC2, Name=RxC3, Timestamp=R1Cx
+    // Timestamp는 날짜만 비교해야 하는데 Response에는 시간도 있을 수 있음 -> getTargetSunday로 00:00:00 처리했으므로 정확히 일치해야 함.
+    
+    var formula = '=COUNTIFS(Response!$B:$B, $A2, Response!$C:$C, $B2, Response!$D:$D, $C2, Response!$A:$A, D$1) > 0';
+    checkboxRange.setFormula(formula);
+  }
+  
+  Logger.log('AttendanceView 시트가 생성되었습니다.');
 }
