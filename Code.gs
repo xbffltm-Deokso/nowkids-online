@@ -293,7 +293,7 @@ function setupAttendanceView(year) {
       for (var col = 0; col < sundays.length; col++) {
         var colLetter = String.fromCharCode(69 + col); // E, F, G, ...
         var rowNum = 4 + row; // 4, 5, 6, ...
-        var formula = '=SUMPRODUCT((Response!$B:$B=$A' + rowNum + ')*(Response!$C:$C=$B' + rowNum + ')*(Response!$D:$D=$C' + rowNum + ')*(TEXT(Response!$A:$A,"yyyy-mm-dd")=TEXT(' + colLetter + '$3,"yyyy-mm-dd")))>0';
+        var formula = '=COUNTIFS(Response!$B:$B, $A' + rowNum + ', Response!$C:$C, $B' + rowNum + ', Response!$D:$D, $C' + rowNum + ', Response!$A:$A, ">="&' + colLetter + '$3, Response!$A:$A, "<"&(' + colLetter + '$3+1)) > 0';
         viewSheet.getRange(rowNum, 5 + col).setFormula(formula);
       }
     }
