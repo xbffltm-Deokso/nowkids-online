@@ -2,7 +2,7 @@ import { Student, AttendanceRecord } from '@/types';
 
 export const MOCK_STUDENTS: Student[] = Array.from({ length: 25 }, (_, i) => ({
     id: `s-${i + 1}`,
-    grade: 1,
+    grade: '1',
     classNum: 1,
     number: i + 1,
     name: `학생 ${i + 1}`,
