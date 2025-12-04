@@ -37,7 +37,7 @@ export default function AttendanceTable({ students, attendance, onStatusChange }
                         <StudentRow
                             key={student.id}
                             student={student}
-                            currentStatus={attendance[student.id]?.status || '출석'} // 기본값 출석
+                            currentStatus={attendance[student.id]?.status || '결석'} // 기본값 결석 (체크해제)
                             onStatusChange={onStatusChange}
                         />
                     ))}
