@@ -1,9 +1,8 @@
 import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import Stack from '@mui/material/Stack';
+import Checkbox from '@mui/material/Checkbox';
 import { Student, AttendanceStatus } from '@/types';
-import AttendanceButton from '@/components/atoms/AttendanceButton';
-import StatusChip from '@/components/atoms/StatusChip';
 import TypographyAtom from '@/components/atoms/TypographyAtom';
 
 interface StudentRowProps {
@@ -15,6 +14,13 @@ interface StudentRowProps {
 const STATUS_OPTIONS: AttendanceStatus[] = ['출석', '지각', '결석', '조퇴', '기타'];
 
 export default function StudentRow({ student, currentStatus, onStatusChange }: StudentRowProps) {
+    const isChecked = currentStatus === '출석';
+
+    const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const newStatus = event.target.checked ? '출석' : '결석';
+        onStatusChange(student.id, newStatus);
+    };
+
     return (
         <TableRow hover>
             <TableCell align="center" sx={{ width: 80 }}>
@@ -28,20 +34,12 @@ export default function StudentRow({ student, currentStatus, onStatusChange }: S
                     {student.gender === 'M' ? '남' : '여'}
                 </TypographyAtom>
             </TableCell>
-            <TableCell align="center" sx={{ width: 100 }}>
-                <StatusChip status={currentStatus} />
-            </TableCell>
-            <TableCell>
-                <Stack direction="row" spacing={1} justifyContent="center">
-                    {STATUS_OPTIONS.map((status) => (
-                        <AttendanceButton
-                            key={status}
-                            status={status}
-                            currentStatus={currentStatus}
-                            onClick={(newStatus) => onStatusChange(student.id, newStatus)}
-                        />
-                    ))}
-                </Stack>
+            <TableCell align="center">
+                <Checkbox
+                    checked={isChecked}
+                    onChange={handleCheckboxChange}
+                    color="primary"
+                />
             </TableCell>
         </TableRow>
     );

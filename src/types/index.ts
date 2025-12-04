@@ -16,6 +16,7 @@ export type AttendanceStatus = '출석' | '지각' | '결석' | '조퇴' | '기�
 export interface AttendanceRecord {
     id: string;
     studentId: string;
+    studentName?: string;
     date: string; // YYYY-MM-DD
     status: AttendanceStatus;
     timestamp: string; // ISO String

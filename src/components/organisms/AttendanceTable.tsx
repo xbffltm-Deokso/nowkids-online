@@ -28,10 +28,7 @@ export default function AttendanceTable({ students, attendance, onStatusChange }
                             <TypographyAtom color="white" fontWeight="bold">이름</TypographyAtom>
                         </TableCell>
                         <TableCell align="center">
-                            <TypographyAtom color="white" fontWeight="bold">현재 상태</TypographyAtom>
-                        </TableCell>
-                        <TableCell align="center">
-                            <TypographyAtom color="white" fontWeight="bold">상태 변경</TypographyAtom>
+                            <TypographyAtom color="white" fontWeight="bold">출석</TypographyAtom>
                         </TableCell>
                     </TableRow>
                 </TableHead>

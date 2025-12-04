@@ -53,11 +53,13 @@ export function useAttendance(grade: string, classNum: number, date: string) {
     }, [fetchData]);
 
     const updateStatus = (studentId: string, newStatus: AttendanceStatus) => {
+        const student = students.find(s => s.id === studentId);
         setAttendance((prev: Record<string, AttendanceRecord>) => ({
             ...prev,
             [studentId]: {
                 id: prev[studentId]?.id || `new-${Date.now()}`,
                 studentId,
+                studentName: student?.name,
                 date,
                 status: newStatus,
                 timestamp: new Date().toISOString(),

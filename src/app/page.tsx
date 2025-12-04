@@ -7,13 +7,14 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
 
+import { getSundayOfCurrentWeek } from '@/utils/dateUtils';
 import TypographyAtom from '@/components/atoms/TypographyAtom';
 import AttendanceForm from '@/components/organisms/AttendanceForm';
 import { useAttendance } from '@/hooks/useAttendance';
 import { useGrades } from '@/hooks/useGrades';
 
 export default function HomePage() {
-    const [date] = useState(new Date().toISOString().split('T')[0]);
+    const [date] = useState(getSundayOfCurrentWeek());
     const [selectedGrade, setSelectedGrade] = useState('');
     const [selectedClass, setSelectedClass] = useState(1);
 
