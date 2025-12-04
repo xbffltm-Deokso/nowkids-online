@@ -50,14 +50,17 @@ src/
 
 ## 🎨 디자인 원칙
 
-1. **MUI 컴포넌트만 사용** - Raw HTML 금지
-2. **200줄 이하** - 파일당 최대 200줄
-3. **DRY** - 재사용 가능한 컴포넌트
-4. **Atomic Design** - 체계적인 컴포넌트 구조
-5. **타입 안전성** - TypeScript, no `any`
-6. **SSR First** - 정적 생성 우선
-7. **컴포넌트 조합** - 간단한 것부터 복잡한 것으로
-8. **클라이언트 최소화** - 'use client' 최소한으로
+### Design Principles (STRICT)
+1. **NO raw HTML elements** - Use MUI components only (Surface replaces div)
+2. **200 lines max per file** - Aggressively split components
+3. **DRY everything** - Reusable components and hooks
+4. **Atomic Design** - Atoms → Molecules → Organisms → Templates
+5. **Type-safe** - Full TypeScript, no `any` types
+6. **SSR First** - Use Next.js SSR/ISR for performance
+7. **Component Composition** - Build complex from simple
+8. **Client Components Minimized** - Always prefer SSR, use "use client" sparingly
+9. **NO FALLBACKS OR WORKAROUNDS** - Never use setTimeout, fallback patterns, or workarounds
+10. **NO COMPROMISES** - Fix root causes, not symptoms. No shortcuts or band-aid solutions
 
 ## 🌐 배포 (Cloudflare Pages)
 
