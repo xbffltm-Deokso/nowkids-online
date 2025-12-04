@@ -87,11 +87,20 @@ function getStudents(e) {
       const row = data[i];
       if (String(row[headers.indexOf('Grade')]) === String(grade) &&
           Number(row[headers.indexOf('Class')]) === classNum) {
+        
+        let id = String(row[headers.indexOf('ID')]);
+        const number = Number(row[headers.indexOf('Number')]);
+        
+        // ID가 없으면 학년-반-번호로 생성
+        if (!id || id === 'undefined' || id === '') {
+          id = `${grade}_${classNum}_${number}`;
+        }
+
         students.push({
-          id: String(row[headers.indexOf('ID')]),
+          id: id,
           grade: String(row[headers.indexOf('Grade')]),
           classNum: Number(row[headers.indexOf('Class')]),
-          number: Number(row[headers.indexOf('Number')]),
+          number: number,
           name: row[headers.indexOf('Name')],
           gender: row[headers.indexOf('Gender')],
           status: row[headers.indexOf('Status')]
@@ -130,11 +139,18 @@ function getAttendance(e) {
     const studentHeaders = studentData[0];
 
     const studentIds = [];
+    const studentIds = [];
     for (let i = 1; i < studentData.length; i++) {
       const row = studentData[i];
       if (String(row[studentHeaders.indexOf('Grade')]) === String(grade) &&
           Number(row[studentHeaders.indexOf('Class')]) === classNum) {
-        studentIds.push(String(row[studentHeaders.indexOf('ID')]));
+        
+        let id = String(row[studentHeaders.indexOf('ID')]);
+        if (!id || id === 'undefined' || id === '') {
+          const number = Number(row[studentHeaders.indexOf('Number')]);
+          id = `${grade}_${classNum}_${number}`;
+        }
+        studentIds.push(id);
       }
     }
 
