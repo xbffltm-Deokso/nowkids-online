@@ -31,19 +31,10 @@ function createAttendanceView() {
   
   // Set headers at Row 4
   const headerRange = sheet.getRange(4, 1, 1, allHeaders.length);
-  // headerRange.setNumberFormat('@'); // Plain text causes mismatch if DB has Date objects.
-  headerRange.setNumberFormat('yyyy-mm-dd'); // Set Date format
+  headerRange.setNumberFormat('@'); // Force Plain Text to match DB string dates
   
-  // Convert date strings to Date objects for headers to match DB types
-  const headerValues = allHeaders.map(h => {
-    // If it looks like a date YYYY-MM-DD
-    if (typeof h === 'string' && h.match(/^\d{4}-\d{2}-\d{2}$/)) {
-      return new Date(h); // Write as Date Object
-    }
-    return h;
-  });
-  
-  headerRange.setValues([headerValues]);
+  // Use simple values (strings), no Date objects
+  headerRange.setValues([allHeaders]);
   headerRange.setFontWeight('bold');
   headerRange.setBackground('#e0e0e0');
   headerRange.setHorizontalAlignment('center');
