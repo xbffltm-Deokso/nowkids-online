@@ -153,7 +153,13 @@ function getStudentList(ss) {
   
   const gIdx = getIdx('Grade', '학년');
   const cIdx = getIdx('Class', '반');
-  const nIdx = getIdx('Number', '번호');
+  
+  // Update Number detection to include 'No' variations
+  let nIdx = headers.indexOf('Number');
+  if (nIdx === -1) nIdx = headers.indexOf('번호');
+  if (nIdx === -1) nIdx = headers.indexOf('No');
+  if (nIdx === -1) nIdx = headers.indexOf('No.');
+  
   const naIdx = getIdx('Name', '이름');
 
   // If critical columns are missing, show error
