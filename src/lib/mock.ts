@@ -14,7 +14,7 @@ export const MOCK_ATTENDANCE: AttendanceRecord[] = MOCK_STUDENTS.map((student) =
     id: `a-${student.id}`,
     studentId: student.id,
     date: new Date().toISOString().split('T')[0],
-    status: '결석', // 기본값
+    status: false, // 기본값: FALSE (결석)
     timestamp: new Date().toISOString(),
 }));
 
