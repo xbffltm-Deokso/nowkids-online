@@ -12,14 +12,10 @@ interface StudentRowProps {
     onStatusChange: (studentId: string, newStatus: AttendanceStatus) => void;
 }
 
-const STATUS_OPTIONS: AttendanceStatus[] = ['출석', '지각', '결석', '조퇴', '기타'];
 
 export default function StudentRow({ student, currentStatus, onStatusChange }: StudentRowProps) {
-    const isChecked = currentStatus === '출석';
-
     const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const newStatus = event.target.checked ? '출석' : '결석';
-        onStatusChange(student.id, newStatus);
+        onStatusChange(student.id, event.target.checked);
     };
 
     return (
@@ -34,7 +30,7 @@ export default function StudentRow({ student, currentStatus, onStatusChange }: S
             </TableCell>
             <TableCell align="center">
                 <Checkbox
-                    checked={isChecked}
+                    checked={currentStatus}
                     onChange={handleCheckboxChange}
                     color="primary"
                 />

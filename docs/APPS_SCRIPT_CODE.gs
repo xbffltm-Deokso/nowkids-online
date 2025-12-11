@@ -207,14 +207,20 @@ function submitAttendance(e) {
     // 새 기록 추가
     records.forEach(function(record) {
       const id = 'A' + Date.now() + Math.random().toString(36).substr(2, 9);
+      const rowIndex = attendanceSheet.getLastRow() + 1;
+      
       attendanceSheet.appendRow([
         id,
         record.studentId,
-        record.studentName || '', // Name might be empty if not provided
+        record.studentName || '',
         record.date,
-        record.status,
+        record.status, // Boolean: TRUE or FALSE
         timestamp
       ]);
+      
+      // Status 컬럼(E)을 체크박스로 설정
+      const statusCell = attendanceSheet.getRange(rowIndex, 5); // Column E (5th column)
+      statusCell.insertCheckboxes();
     });
 
     return createSuccess(true);

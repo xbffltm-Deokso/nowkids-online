@@ -64,7 +64,7 @@ export function useAttendance(grade: string, classNum: number, date: string) {
                             studentId: s.id,
                             studentName: s.name,
                             date,
-                            status: '결석', // 기본값
+                            status: false, // 기본값: FALSE (결석)
                             timestamp: new Date().toISOString(),
                         };
                     }

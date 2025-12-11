@@ -11,7 +11,7 @@ export interface Student {
     status: StudentStatus;
 }
 
-export type AttendanceStatus = '출석' | '지각' | '결석' | '조퇴' | '기타';
+export type AttendanceStatus = boolean; // TRUE = 출석, FALSE = 결석
 
 export interface AttendanceRecord {
     id: string;
