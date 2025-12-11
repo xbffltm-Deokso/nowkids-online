@@ -162,24 +162,35 @@ function getStudentList(ss) {
   
   const naIdx = getIdx('Name', '이름');
 
-  // If critical columns are missing, show error
-  if (gIdx === -1 || cIdx === -1 || nIdx === -1) {
-    Browser.msgBox('StudentDB의 헤더(Grade/학년, Class/반, Number/번호)를 찾을 수 없습니다.');
+  // Check critical headers (Grade, Class)
+  if (gIdx === -1 || cIdx === -1) {
+    Browser.msgBox('필수 헤더(학년, 반)를 찾을 수 없습니다.\\n현재 헤더: ' + headers.join(', '));
     return [];
+  }
+  
+  // Warn if Number is missing, but proceed
+  if (nIdx === -1) {
+    Browser.msgBox('경고: 번호(Number/No/번호) 컬럼을 찾을 수 없습니다.\\n자동으로 0으로 처리합니다.\\n현재 헤더: ' + headers.join(', '));
   }
   
   const list = [];
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
+    
+    // Safely get values
+    const grade = row[gIdx];
+    const classNum = row[cIdx];
+    const number = (nIdx !== -1) ? row[nIdx] : '0';
+    const name = (naIdx !== -1) ? row[naIdx] : 'Unknown';
+    
     // ID Logic: Grade_Class_Number_RowIndex
-    // Ensure we use the exact row index 'i' to match Backend API logic
-    const id = `${row[gIdx]}_${row[cIdx]}_${row[nIdx]}_${i}`;
+    const id = `${grade}_${classNum}_${number}_${i}`;
     list.push({
       id: id,
-      grade: row[gIdx],
-      classNum: row[cIdx],
-      number: row[nIdx],
-      name: row[naIdx]
+      grade: grade,
+      classNum: classNum,
+      number: number,
+      name: name
     });
   }
   return list;
