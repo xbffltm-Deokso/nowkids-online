@@ -23,16 +23,15 @@ export function useAttendance(grade: string, classNum: number, date: string) {
                     api.getAttendance({ date, grade, classNum }),
                 ]);
 
-                const studentsWithIds = studentsData.map((s, index) => {
-                    // 고유 ID 생성을 위해 인덱스 활용 (이름/번호 중복 및 영속성 보장)
-                    // 랜덤 값은 새로고침 시 초기화되므로 출석 기록 매칭에 문제가 생김.
-                    // 따라서 순서 기반의 인덱스를 사용하여 ID를 생성함.
-                    const generatedId = `${grade}-${classNum}-${s.number || '0'}-${s.name || 'unknown'}-idx${index}`;
-                    return {
-                        ...s,
-                        id: s.id || generatedId,
-                    };
-                });
+                // GAS에서 ID를 생성해서 보내주므로(행 인덱스 포함), 프론트엔드에서는 그대로 사용합니다.
+                // 만약 GAS가 업데이트되지 않았다면 중복 문제가 여전할 수 있으나, 
+                // 프론트엔드에서 임의로 인덱스를 붙이면 저장 시 매칭이 안되는 문제가 발생함.
+                // 따라서 백엔드 업데이트를 필수로 가정하고 API 데이터를 신뢰함.
+                const studentsWithIds = studentsData.map(s => ({
+                    ...s,
+                    // 혹시라도 ID가 없으면 임시 생성 (화면 표시용)
+                    id: s.id || `${grade}-${classNum}-${s.number}-${s.name}-${Math.random().toString(36).substring(2, 7)}`
+                }));
 
                 setStudents(studentsWithIds);
                 const attendanceMap = attendanceData.reduce((acc, record) => {

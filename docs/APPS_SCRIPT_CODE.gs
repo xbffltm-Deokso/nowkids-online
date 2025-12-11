@@ -91,10 +91,11 @@ function getStudents(e) {
         let id = String(row[headers.indexOf('ID')]);
         const number = Number(row[headers.indexOf('Number')]);
         
-        // ID가 없으면 학년-반-번호로 생성
-        if (!id || id === 'undefined' || id === '') {
-          id = `${grade}_${classNum}_${number}`;
-        }
+        // ID가 없거나 중복될 수 있으므로, 고유성을 위해 행 인덱스(i)를 포함하여 ID 생성
+        // 기존: id || grade_class_number
+        // 변경: grade_class_number_rowindex (ID가 있어도 덮어쓰거나, ID가 없으면 생성)
+        // 안전하게 항상 grade_class_number_rowindex 형식을 사용하여 중복 방지
+        id = `${grade}_${classNum}_${number}_${i}`; // i는 행 번호 (Unique)
 
         students.push({
           id: id,
@@ -139,17 +140,14 @@ function getAttendance(e) {
     const studentHeaders = studentData[0];
 
     const studentIds = [];
-    const studentIds = [];
     for (let i = 1; i < studentData.length; i++) {
       const row = studentData[i];
       if (String(row[studentHeaders.indexOf('Grade')]) === String(grade) &&
           Number(row[studentHeaders.indexOf('Class')]) === classNum) {
         
-        let id = String(row[studentHeaders.indexOf('ID')]);
-        if (!id || id === 'undefined' || id === '') {
-          const number = Number(row[studentHeaders.indexOf('Number')]);
-          id = `${grade}_${classNum}_${number}`;
-        }
+        // getStudents와 동일한 로직으로 ID 생성하여 매칭
+        const number = Number(row[studentHeaders.indexOf('Number')]);
+        const id = `${grade}_${classNum}_${number}_${i}`;
         studentIds.push(id);
       }
     }
