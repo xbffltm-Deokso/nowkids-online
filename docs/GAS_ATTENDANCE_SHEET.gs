@@ -13,10 +13,8 @@ function createAttendanceView() {
   const sheetName = 'AttendanceView';
   let sheet = ss.getSheetByName(sheetName);
 
+  // 기존 시트가 있으면 삭제
   if (sheet) {
-    const ui = SpreadsheetApp.getUi();
-    const response = ui.alert('경고', '기존 시트가 삭제되고 재생성됩니다. 계속하시겠습니까?', ui.ButtonSet.YES_NO);
-    if (response !== ui.Button.YES) return;
     ss.deleteSheet(sheet);
   }
   
