@@ -91,7 +91,6 @@ function createAttendanceView() {
   // 5. Apply Formulas
   
   // (1) Attendance Rate Formula (Column D)
-  const lastColLetter = getColumnLetter(allHeaders.length);
   const headerDateRange = `$E$4:$${lastColLetter}$4`;
   
   for (let i = 0; i < numRows; i++) {
