@@ -2,7 +2,7 @@ import { Student, AttendanceRecord, ApiResponse } from '@/types';
 
 // Google Apps Script Web App URL (나중에 환경변수로 분리)
 // Google Apps Script Web App URL (환경변수 설정 문제로 하드코딩)
-const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwIF7skJwt9GEnre5ELUAaVvD6s8H9n0W7vCKwGDuO5CeHMynS-Fsp9AbgrrFUsYbPA/exec';
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwokD0NFYzX9rXbk16Zi7bt6RrK22Z7SDwQjagPua9Y2jaFlfOpYBm5gLDvCXXcuJeK/exec';
 
 interface GetStudentsParams {
     grade: string;
