@@ -28,10 +28,17 @@ function createAttendanceView() {
   const allHeaders = fixedHeaders.concat(sundays);
   
   // Set headers at Row 4
-  const headerRange = sheet.getRange(4, 1, 1, allHeaders.length);
-  headerRange.setNumberFormat('@'); // Force Plain Text
-  headerRange.setValues([allHeaders]);
-  headerRange.setFontWeight('bold').setBackground('#e0e0e0').setHorizontalAlignment('center');
+  // Fixed headers (Grade, Class, Name, Rate)
+  const fixedHeaderRange = sheet.getRange(4, 1, 1, fixedHeaders.length);
+  fixedHeaderRange.setValues([fixedHeaders]);
+  fixedHeaderRange.setFontWeight('bold').setBackground('#e0e0e0').setHorizontalAlignment('center');
+  
+  // Date headers (E4 onwards) - Display as "M/D", store as Date objects
+  const dateHeaderRange = sheet.getRange(4, 5, 1, sundays.length);
+  const dateObjects = sundays.map(d => new Date(d)); // Convert "2025-12-07" to Date
+  dateHeaderRange.setValues([dateObjects]);
+  dateHeaderRange.setNumberFormat('M/D'); // Display as "12/7"
+  dateHeaderRange.setFontWeight('bold').setBackground('#e0e0e0').setHorizontalAlignment('center');
   
   // Add Summary Statistics in Rows 1-3
   
@@ -114,9 +121,9 @@ function createAttendanceView() {
   sheet.setColumnWidth(1, 60); // Grade
   sheet.setColumnWidth(2, 50); // Class
   sheet.setColumnWidth(3, 80); // Name
-  sheet.setColumnWidth(4, 60); // Rate
+  sheet.setColumnWidth(4, 120); // Rate (Attendance Rate)
   for (let c = 5; c <= allHeaders.length; c++) {
-    sheet.setColumnWidth(c, 30);
+    sheet.setColumnWidth(c, 40); // 날짜 컬럼들
   }
 }
 
