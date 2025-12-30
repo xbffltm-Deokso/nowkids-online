@@ -18,7 +18,7 @@ interface AttendanceTableProps {
 export default function AttendanceTable({ students, attendance, onStatusChange }: AttendanceTableProps) {
     return (
         <TableContainer component={Paper} elevation={2}>
-            <Table sx={{ minWidth: 650 }} aria-label="attendance table">
+            <Table aria-label="attendance table">
                 <TableHead>
                     <TableRow sx={{ backgroundColor: 'primary.light' }}>
                         <TableCell align="center">

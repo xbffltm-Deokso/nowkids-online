@@ -577,3 +577,53 @@ function installTrigger() {
   
   Browser.msgBox('트리거가 설치되었습니다.');
 }
+
+/**
+ * StudentDB 시트가 없을 때 기본 구조로 생성해주는 함수
+ * 이 함수를 실행하면 StudentDB 시트가 생성되고 예시 데이터가 입력됩니다.
+ */
+function setupStudentDB() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName('StudentDB');
+  
+  if (sheet) {
+    Browser.msgBox('이미 StudentDB 시트가 존재합니다.');
+    return;
+  }
+  
+  sheet = ss.insertSheet('StudentDB');
+  
+  // 헤더 설정 (Grade, Class, Number, Name, ID, Gender, Status)
+  const headers = ['Grade', 'Class', 'Number', 'Name', 'ID', 'Gender', 'Status'];
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#e0e0e0');
+  
+  // 예시 데이터 추가
+  const samples = [
+    [1, 1, 1, '홍길동', '10101', 'M', 'Active'],
+    [1, 1, 2, '김철수', '10102', 'M', 'Active'],
+    [1, 2, 1, '이영희', '10201', 'F', 'Active']
+  ];
+  
+  sheet.getRange(2, 1, samples.length, samples[0].length).setValues(samples);
+  
+  // 열 너비 조정
+  sheet.setColumnWidth(1, 50); // Grade
+  sheet.setColumnWidth(2, 50); // Class
+  sheet.setColumnWidth(3, 50); // Number
+  sheet.setColumnWidth(4, 80); // Name
+  
+  Browser.msgBox('StudentDB 시트가 생성되었습니다.');
+}
+
+/**
+ * [최초 실행용] 초기 설정 원클릭 함수
+ * 빈 스프레드시트에 코드를 붙여넣은 후, 이 함수만 실행하면 됩니다.
+ * 1. StudentDB 시트 생성 및 예시 데이터 입력
+ * 2. AttendanceView 시트 생성
+ */
+function initializeAll() {
+  setupStudentDB();
+  createAttendanceView();
+  Browser.msgBox('초기 설정이 완료되었습니다.\\n\\n1. "StudentDB" 시트에서 학생 명단을 실제 데이터로 수정하세요.\\n2. 수정 후에는 "AttendanceView" 시트가 자동으로 갱신됩니다.');
+}
