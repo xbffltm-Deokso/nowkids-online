@@ -55,7 +55,7 @@ export function useAttendance(grade: string, classNum: number, date: string) {
                         studentName: record.student.name,
                         date: record.date,
                         status: record.status,
-                        reason: record.reason,
+                        reason: record.reason ?? '',
                         timestamp: record.timestamp,
                     };
                 }
