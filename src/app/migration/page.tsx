@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { Container, Typography, Button, Box, Alert, CircularProgress } from '@mui/material';
 import { api } from '@/lib/api'; // 구버전 GAS API
 import { dataConnect } from '@/lib/firebase';
-import { upsertAttendance } from '@/lib/generated';
+import { upsertStudent } from '@/lib/generated';
 import { getAuth, signInAnonymously } from 'firebase/auth';
-import { Student, AttendanceRecord } from '@/types';
+import { Student } from '@/types';
 
 export default function MigrationPage() {
     const [loading, setLoading] = useState(false);
@@ -23,55 +23,85 @@ export default function MigrationPage() {
         setLog([]);
 
         try {
-            // Firebase Auth
             const auth = getAuth();
             if (!auth.currentUser) {
                 await signInAnonymously(auth);
             }
-            addLog("Firebase 익명 로그인 완료");
+            addLog("✅ Firebase 익명 로그인 완료");
 
-            // 1. 모든 학년/반 목록 가져오기
-            addLog("구글 시트(GAS)에서 학년/반 목록을 가져오는 중...");
+            addLog("🔍 구글 시트(GAS)에서 학년/반 목록을 가져오는 중...");
             const { grades, classes } = await api.getGradeClassList();
             
             if (!grades || grades.length === 0) {
                 throw new Error("학년 데이터를 찾을 수 없습니다.");
             }
 
-            // 2. 각 학년/반을 돌며 학생과 출결 데이터 가져와서 삽입하기
+            addLog(`📁 총 ${grades.length}개 학년, ${classes.length}개 반 데이터 확인됨.`);
+
             for (const grade of grades) {
                 for (const classNum of classes) {
-                    addLog(`${grade} 학년 ${classNum}반 데이터 이관 시작...`);
+                    addLog(`----------------------------------------`);
+                    addLog(`🚀 [${grade} ${classNum}반] 데이터 처리 시작...`);
 
-                    // 학생 데이터 가져오기
-                    const students = await api.getStudents({ grade, classNum });
-                    if (students && students.length > 0) {
-                        for (const s of students) {
-                            // 학생 ID가 없으면 임시 생성
-                            const studentId = s.id && s.id !== 'undefined' ? s.id : `${grade}-${classNum}-${s.number}-${s.name}`;
-                            
-                            // await upsertStudent(dataConnect, {
-                            //     id: studentId,
-                            //     grade: grade,
-                            //     classNum: classNum,
-                            //     number: s.number,
-                            //     name: s.name,
-                            //     gender: s.gender || 'M',
-                            //     status: s.status || '재학'
-                            // });
-                        }
-                        addLog(`${grade} 학년 ${classNum}반 학생 ${students.length}명 이관 완료.`);
+                    const rawStudents = await api.getStudents({ grade, classNum });
+                    if (!rawStudents || rawStudents.length === 0) {
+                        addLog(`⚠️ 데이터 없음. 건너뜜.`);
+                        continue;
                     }
 
-                    // 최근 한 달 출결 데이터 가져오기 (예시로 오늘 날짜 기준)
-                    // (과거의 모든 날짜를 가져오려면 GAS API 수정이 필요하지만, 여기서는 오늘 날짜만 테스트로 가져옵니다)
-                    // 만약 과거 모든 데이터를 가져와야 한다면 GAS 스크립트를 대대적으로 뜯어고쳐야 하므로,
-                    // 현재로서는 최신 학생 목록을 Firebase로 이관하는 것에 집중합니다.
+                    // 1차 가공 및 중복 제거
+                    const processedStudents: Student[] = [];
+                    const seenNames = new Set<string>();
+
+                    rawStudents.forEach((s) => {
+                        const name = s.name.trim();
+                        if (!name) return;
+
+                        // 중복 이름 체크 (학년/반 내에서)
+                        if (seenNames.has(name)) {
+                            addLog(`🚫 중복 데이터 발견: ${name} (제외됨)`);
+                            return;
+                        }
+
+                        // 번호(Number) 처리 - NaN이거나 0 이하인 경우 보정
+                        let studentNumber = s.number;
+                        if (isNaN(studentNumber) || studentNumber <= 0) {
+                            studentNumber = processedStudents.length + 1;
+                        }
+
+                        processedStudents.push({
+                            ...s,
+                            id: s.id, // 임시, 아래에서 다시 정의
+                            name,
+                            number: studentNumber,
+                            gender: (s.gender === '남' || s.gender === 'M') ? 'M' : 'F',
+                            status: s.status === '재학' || s.status === '휴학' || s.status === '전학' ? s.status : '재학'
+                        });
+                        seenNames.add(name);
+                    });
+
+                    addLog(`📦 정제 완료: ${rawStudents.length}명 -> ${processedStudents.length}명`);
+
+                    // DB 업로드
+                    for (const s of processedStudents) {
+                        const studentId = `${grade}_${classNum}_${s.number}_${s.name.replace(/\s+/g, '')}`;
+                        
+                        await upsertStudent(dataConnect, {
+                            id: studentId,
+                            grade: grade,
+                            classNum: classNum,
+                            number: s.number,
+                            name: s.name,
+                            gender: s.gender,
+                            status: s.status
+                        });
+                    }
+                    addLog(`✅ DB 업로드 완료: ${processedStudents.length}명`);
                 }
             }
 
-            addLog("🎉 모든 학생 데이터 이관이 성공적으로 완료되었습니다!");
-            addLog("이제 메인 페이지( http://localhost:3000 )로 돌아가서 학생 목록이 뜨는지 확인하세요.");
+            addLog(`----------------------------------------`);
+            addLog("🎉 모든 데이터 이관 및 정제가 성공적으로 완료되었습니다!");
 
         } catch (err: any) {
             console.error(err);
@@ -83,12 +113,12 @@ export default function MigrationPage() {
 
     return (
         <Container maxWidth="md" sx={{ py: 8 }}>
-            <Typography variant="h4" gutterBottom fontWeight="bold">
-                데이터베이스 이관 (GAS ➔ Firebase)
+            <Typography variant="h4" gutterBottom fontWeight="bold" color="primary">
+                데이터베이스 마이그레이션 (GAS ➔ Firebase)
             </Typography>
-            <Alert severity="info" sx={{ mb: 4 }}>
-                기존 구글 시트(GAS)에 저장된 학생 데이터를 새로운 Firebase RDBMS로 복사합니다.<br/>
-                이 작업은 최초 1회만 실행해야 합니다.
+            <Alert severity="warning" sx={{ mb: 4 }}>
+                주의: 이 작업은 구글 스프레드시트의 데이터를 정제(중복 제거, 번호 보정 등)하여 Firebase RDBMS로 업로드합니다.<br/>
+                기존 DB에 동일한 ID의 학생이 있을 경우 덮어씌워집니다.
             </Alert>
 
             <Box sx={{ mb: 4 }}>
@@ -98,8 +128,9 @@ export default function MigrationPage() {
                     size="large" 
                     onClick={runMigration}
                     disabled={loading}
+                    sx={{ px: 4, py: 1.5, borderRadius: 2 }}
                 >
-                    {loading ? <CircularProgress size={24} sx={{ color: 'white' }} /> : '데이터 이관 시작하기'}
+                    {loading ? <CircularProgress size={24} sx={{ color: 'white' }} /> : '데이터 정제 및 이관 시작'}
                 </Button>
             </Box>
 
@@ -107,15 +138,16 @@ export default function MigrationPage() {
                 <Alert severity="error" sx={{ mb: 4 }}>{error}</Alert>
             )}
 
-            <Box sx={{ bgcolor: '#f5f5f5', p: 3, borderRadius: 2, minHeight: 200, maxHeight: 400, overflowY: 'auto' }}>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    진행 로그:
+            <Box sx={{ bgcolor: '#1e1e1e', color: '#00ff00', p: 3, borderRadius: 2, minHeight: 300, maxHeight: 500, overflowY: 'auto' }}>
+                <Typography variant="subtitle2" color="rgba(255,255,255,0.7)" gutterBottom>
+                    마이그레이션 터미널 로그:
                 </Typography>
                 {log.map((line, idx) => (
-                    <Typography key={idx} variant="body2" sx={{ fontFamily: 'monospace', mb: 0.5 }}>
+                    <Typography key={idx} variant="body2" sx={{ fontFamily: 'monospace', mb: 0.5, lineHeight: 1.6 }}>
                         {line}
                     </Typography>
                 ))}
+                {loading && <CircularProgress size={16} sx={{ mt: 1, color: '#00ff00' }} />}
             </Box>
         </Container>
     );
