@@ -1,6 +1,10 @@
 import MenuItem from '@mui/material/MenuItem';
 import Select, { SelectChangeEvent } from '@mui/material/Select';
 import TextField from '@mui/material/TextField';
+import TableRow from '@mui/material/TableRow';
+import TableCell from '@mui/material/TableCell';
+import Checkbox from '@mui/material/Checkbox';
+import Stack from '@mui/material/Stack';
 import { Student, AttendanceStatus } from '@/types';
 import TypographyAtom from '@/components/atoms/TypographyAtom';
 

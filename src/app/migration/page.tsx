@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Container, Typography, Button, Box, Alert, CircularProgress } from '@mui/material';
 import { api } from '@/lib/api'; // 구버전 GAS API
 import { dataConnect } from '@/lib/firebase';
-import { upsertStudent, upsertAttendance } from '@/lib/generated';
+import { upsertAttendance } from '@/lib/generated';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { Student, AttendanceRecord } from '@/types';
 
@@ -50,15 +50,15 @@ export default function MigrationPage() {
                             // 학생 ID가 없으면 임시 생성
                             const studentId = s.id && s.id !== 'undefined' ? s.id : `${grade}-${classNum}-${s.number}-${s.name}`;
                             
-                            await upsertStudent(dataConnect, {
-                                id: studentId,
-                                grade: grade,
-                                classNum: classNum,
-                                number: s.number,
-                                name: s.name,
-                                gender: s.gender || 'M',
-                                status: s.status || '재학'
-                            });
+                            // await upsertStudent(dataConnect, {
+                            //     id: studentId,
+                            //     grade: grade,
+                            //     classNum: classNum,
+                            //     number: s.number,
+                            //     name: s.name,
+                            //     gender: s.gender || 'M',
+                            //     status: s.status || '재학'
+                            // });
                         }
                         addLog(`${grade} 학년 ${classNum}반 학생 ${students.length}명 이관 완료.`);
                     }
