@@ -19,6 +19,18 @@ exports.upsertAttendance = function upsertAttendance(dcOrVars, vars) {
   return executeMutation(upsertAttendanceRef(dcOrVars, vars));
 };
 
+const upsertStudentRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return mutationRef(dcInstance, 'UpsertStudent', inputVars);
+}
+upsertStudentRef.operationName = 'UpsertStudent';
+exports.upsertStudentRef = upsertStudentRef;
+
+exports.upsertStudent = function upsertStudent(dcOrVars, vars) {
+  return executeMutation(upsertStudentRef(dcOrVars, vars));
+};
+
 const getStudentsRef = (dcOrVars, vars) => {
   const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
   dcInstance._useGeneratedSdk();
@@ -41,4 +53,16 @@ exports.getAttendanceByDateRef = getAttendanceByDateRef;
 
 exports.getAttendanceByDate = function getAttendanceByDate(dcOrVars, vars) {
   return executeQuery(getAttendanceByDateRef(dcOrVars, vars));
+};
+
+const getAttendanceHistoryRef = (dcOrVars, vars) => {
+  const { dc: dcInstance, vars: inputVars} = validateArgs(connectorConfig, dcOrVars, vars, true);
+  dcInstance._useGeneratedSdk();
+  return queryRef(dcInstance, 'GetAttendanceHistory', inputVars);
+}
+getAttendanceHistoryRef.operationName = 'GetAttendanceHistory';
+exports.getAttendanceHistoryRef = getAttendanceHistoryRef;
+
+exports.getAttendanceHistory = function getAttendanceHistory(dcOrVars, vars) {
+  return executeQuery(getAttendanceHistoryRef(dcOrVars, vars));
 };

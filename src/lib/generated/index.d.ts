@@ -35,6 +35,25 @@ export interface GetAttendanceByDateVariables {
   classNum: number;
 }
 
+export interface GetAttendanceHistoryData {
+  attendanceRecords: ({
+    id: string;
+    student: {
+      id: string;
+      name: string;
+    } & Student_Key;
+      date: DateString;
+      status: boolean;
+      reason?: string | null;
+      timestamp: TimestampString;
+  } & AttendanceRecord_Key)[];
+}
+
+export interface GetAttendanceHistoryVariables {
+  grade: string;
+  classNum: number;
+}
+
 export interface GetStudentsData {
   students: ({
     id: string;
@@ -69,6 +88,20 @@ export interface UpsertAttendanceVariables {
   reason?: string | null;
 }
 
+export interface UpsertStudentData {
+  student_upsert: Student_Key;
+}
+
+export interface UpsertStudentVariables {
+  id: string;
+  grade: string;
+  classNum: number;
+  number: number;
+  name: string;
+  gender: string;
+  status: string;
+}
+
 interface UpsertAttendanceRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: UpsertAttendanceVariables): MutationRef<UpsertAttendanceData, UpsertAttendanceVariables>;
@@ -80,6 +113,18 @@ export const upsertAttendanceRef: UpsertAttendanceRef;
 
 export function upsertAttendance(vars: UpsertAttendanceVariables): MutationPromise<UpsertAttendanceData, UpsertAttendanceVariables>;
 export function upsertAttendance(dc: DataConnect, vars: UpsertAttendanceVariables): MutationPromise<UpsertAttendanceData, UpsertAttendanceVariables>;
+
+interface UpsertStudentRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertStudentVariables): MutationRef<UpsertStudentData, UpsertStudentVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: UpsertStudentVariables): MutationRef<UpsertStudentData, UpsertStudentVariables>;
+  operationName: string;
+}
+export const upsertStudentRef: UpsertStudentRef;
+
+export function upsertStudent(vars: UpsertStudentVariables): MutationPromise<UpsertStudentData, UpsertStudentVariables>;
+export function upsertStudent(dc: DataConnect, vars: UpsertStudentVariables): MutationPromise<UpsertStudentData, UpsertStudentVariables>;
 
 interface GetStudentsRef {
   /* Allow users to create refs without passing in DataConnect */
@@ -104,4 +149,16 @@ export const getAttendanceByDateRef: GetAttendanceByDateRef;
 
 export function getAttendanceByDate(vars: GetAttendanceByDateVariables): QueryPromise<GetAttendanceByDateData, GetAttendanceByDateVariables>;
 export function getAttendanceByDate(dc: DataConnect, vars: GetAttendanceByDateVariables): QueryPromise<GetAttendanceByDateData, GetAttendanceByDateVariables>;
+
+interface GetAttendanceHistoryRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAttendanceHistoryVariables): QueryRef<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAttendanceHistoryVariables): QueryRef<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+  operationName: string;
+}
+export const getAttendanceHistoryRef: GetAttendanceHistoryRef;
+
+export function getAttendanceHistory(vars: GetAttendanceHistoryVariables): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+export function getAttendanceHistory(dc: DataConnect, vars: GetAttendanceHistoryVariables): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
 

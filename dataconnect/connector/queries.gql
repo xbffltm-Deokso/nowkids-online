@@ -32,3 +32,22 @@ query GetAttendanceByDate($date: Date!, $grade: String!, $classNum: Int!) @auth(
     timestamp
   }
 }
+
+query GetAttendanceHistory($grade: String!, $classNum: Int!) @auth(expr: "auth != null") {
+  attendanceRecords(where: {
+    student: {
+      grade: {eq: $grade},
+      classNum: {eq: $classNum}
+    }
+  }, orderBy: [{date: DESC}]) {
+    id
+    student {
+      id
+      name
+    }
+    date
+    status
+    reason
+    timestamp
+  }
+}

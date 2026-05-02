@@ -10,8 +10,10 @@ This README will guide you through the process of using the generated JavaScript
 - [**Queries**](#queries)
   - [*GetStudents*](#getstudents)
   - [*GetAttendanceByDate*](#getattendancebydate)
+  - [*GetAttendanceHistory*](#getattendancehistory)
 - [**Mutations**](#mutations)
   - [*UpsertAttendance*](#upsertattendance)
+  - [*UpsertStudent*](#upsertstudent)
 
 # Accessing the connector
 A connector is a collection of Queries and Mutations. One SDK is generated for each connector - this SDK is generated for the connector `attendance-connector`. You can find more information about connectors in the [Data Connect documentation](https://firebase.google.com/docs/data-connect#how-does).
@@ -303,6 +305,128 @@ executeQuery(ref).then((response) => {
 });
 ```
 
+## GetAttendanceHistory
+You can execute the `GetAttendanceHistory` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [generated/index.d.ts](./index.d.ts):
+```typescript
+getAttendanceHistory(vars: GetAttendanceHistoryVariables): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+
+interface GetAttendanceHistoryRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAttendanceHistoryVariables): QueryRef<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+}
+export const getAttendanceHistoryRef: GetAttendanceHistoryRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
+```typescript
+getAttendanceHistory(dc: DataConnect, vars: GetAttendanceHistoryVariables): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+
+interface GetAttendanceHistoryRef {
+  ...
+  (dc: DataConnect, vars: GetAttendanceHistoryVariables): QueryRef<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+}
+export const getAttendanceHistoryRef: GetAttendanceHistoryRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the getAttendanceHistoryRef:
+```typescript
+const name = getAttendanceHistoryRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `GetAttendanceHistory` query requires an argument of type `GetAttendanceHistoryVariables`, which is defined in [generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface GetAttendanceHistoryVariables {
+  grade: string;
+  classNum: number;
+}
+```
+### Return Type
+Recall that executing the `GetAttendanceHistory` query returns a `QueryPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `GetAttendanceHistoryData`, which is defined in [generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface GetAttendanceHistoryData {
+  attendanceRecords: ({
+    id: string;
+    student: {
+      id: string;
+      name: string;
+    } & Student_Key;
+      date: DateString;
+      status: boolean;
+      reason?: string | null;
+      timestamp: TimestampString;
+  } & AttendanceRecord_Key)[];
+}
+```
+### Using `GetAttendanceHistory`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, getAttendanceHistory, GetAttendanceHistoryVariables } from '@firebasegen/attendance-connector';
+
+// The `GetAttendanceHistory` query requires an argument of type `GetAttendanceHistoryVariables`:
+const getAttendanceHistoryVars: GetAttendanceHistoryVariables = {
+  grade: ..., 
+  classNum: ..., 
+};
+
+// Call the `getAttendanceHistory()` function to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await getAttendanceHistory(getAttendanceHistoryVars);
+// Variables can be defined inline as well.
+const { data } = await getAttendanceHistory({ grade: ..., classNum: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await getAttendanceHistory(dataConnect, getAttendanceHistoryVars);
+
+console.log(data.attendanceRecords);
+
+// Or, you can use the `Promise` API.
+getAttendanceHistory(getAttendanceHistoryVars).then((response) => {
+  const data = response.data;
+  console.log(data.attendanceRecords);
+});
+```
+
+### Using `GetAttendanceHistory`'s `QueryRef` function
+
+```typescript
+import { getDataConnect, executeQuery } from 'firebase/data-connect';
+import { connectorConfig, getAttendanceHistoryRef, GetAttendanceHistoryVariables } from '@firebasegen/attendance-connector';
+
+// The `GetAttendanceHistory` query requires an argument of type `GetAttendanceHistoryVariables`:
+const getAttendanceHistoryVars: GetAttendanceHistoryVariables = {
+  grade: ..., 
+  classNum: ..., 
+};
+
+// Call the `getAttendanceHistoryRef()` function to get a reference to the query.
+const ref = getAttendanceHistoryRef(getAttendanceHistoryVars);
+// Variables can be defined inline as well.
+const ref = getAttendanceHistoryRef({ grade: ..., classNum: ..., });
+
+// You can also pass in a `DataConnect` instance to the `QueryRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = getAttendanceHistoryRef(dataConnect, getAttendanceHistoryVars);
+
+// Call `executeQuery()` on the reference to execute the query.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeQuery(ref);
+
+console.log(data.attendanceRecords);
+
+// Or, you can use the `Promise` API.
+executeQuery(ref).then((response) => {
+  const data = response.data;
+  console.log(data.attendanceRecords);
+});
+```
+
 # Mutations
 
 There are two ways to execute a Data Connect Mutation using the generated Web SDK:
@@ -436,6 +560,133 @@ console.log(data.attendanceRecord_upsert);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.attendanceRecord_upsert);
+});
+```
+
+## UpsertStudent
+You can execute the `UpsertStudent` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [generated/index.d.ts](./index.d.ts):
+```typescript
+upsertStudent(vars: UpsertStudentVariables): MutationPromise<UpsertStudentData, UpsertStudentVariables>;
+
+interface UpsertStudentRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: UpsertStudentVariables): MutationRef<UpsertStudentData, UpsertStudentVariables>;
+}
+export const upsertStudentRef: UpsertStudentRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+upsertStudent(dc: DataConnect, vars: UpsertStudentVariables): MutationPromise<UpsertStudentData, UpsertStudentVariables>;
+
+interface UpsertStudentRef {
+  ...
+  (dc: DataConnect, vars: UpsertStudentVariables): MutationRef<UpsertStudentData, UpsertStudentVariables>;
+}
+export const upsertStudentRef: UpsertStudentRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the upsertStudentRef:
+```typescript
+const name = upsertStudentRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `UpsertStudent` mutation requires an argument of type `UpsertStudentVariables`, which is defined in [generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface UpsertStudentVariables {
+  id: string;
+  grade: string;
+  classNum: number;
+  number: number;
+  name: string;
+  gender: string;
+  status: string;
+}
+```
+### Return Type
+Recall that executing the `UpsertStudent` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `UpsertStudentData`, which is defined in [generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface UpsertStudentData {
+  student_upsert: Student_Key;
+}
+```
+### Using `UpsertStudent`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, upsertStudent, UpsertStudentVariables } from '@firebasegen/attendance-connector';
+
+// The `UpsertStudent` mutation requires an argument of type `UpsertStudentVariables`:
+const upsertStudentVars: UpsertStudentVariables = {
+  id: ..., 
+  grade: ..., 
+  classNum: ..., 
+  number: ..., 
+  name: ..., 
+  gender: ..., 
+  status: ..., 
+};
+
+// Call the `upsertStudent()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await upsertStudent(upsertStudentVars);
+// Variables can be defined inline as well.
+const { data } = await upsertStudent({ id: ..., grade: ..., classNum: ..., number: ..., name: ..., gender: ..., status: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await upsertStudent(dataConnect, upsertStudentVars);
+
+console.log(data.student_upsert);
+
+// Or, you can use the `Promise` API.
+upsertStudent(upsertStudentVars).then((response) => {
+  const data = response.data;
+  console.log(data.student_upsert);
+});
+```
+
+### Using `UpsertStudent`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, upsertStudentRef, UpsertStudentVariables } from '@firebasegen/attendance-connector';
+
+// The `UpsertStudent` mutation requires an argument of type `UpsertStudentVariables`:
+const upsertStudentVars: UpsertStudentVariables = {
+  id: ..., 
+  grade: ..., 
+  classNum: ..., 
+  number: ..., 
+  name: ..., 
+  gender: ..., 
+  status: ..., 
+};
+
+// Call the `upsertStudentRef()` function to get a reference to the mutation.
+const ref = upsertStudentRef(upsertStudentVars);
+// Variables can be defined inline as well.
+const ref = upsertStudentRef({ id: ..., grade: ..., classNum: ..., number: ..., name: ..., gender: ..., status: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = upsertStudentRef(dataConnect, upsertStudentVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.student_upsert);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.student_upsert);
 });
 ```
 

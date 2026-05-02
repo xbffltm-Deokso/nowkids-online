@@ -6,9 +6,11 @@ import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 import Stack from '@mui/material/Stack';
+import Link from 'next/link';
 
 import { getSundayOfCurrentWeek } from '@/utils/dateUtils';
 import TypographyAtom from '@/components/atoms/TypographyAtom';
+import ButtonAtom from '@/components/atoms/ButtonAtom';
 import AttendanceForm from '@/components/organisms/AttendanceForm';
 import { useAttendance } from '@/hooks/useAttendance';
 import { useGrades } from '@/hooks/useGrades';
@@ -45,17 +47,22 @@ export default function HomePage() {
 
     return (
         <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Box sx={{ mb: 4 }}>
-                <TypographyAtom variant="h4" component="h1" fontWeight="bold" color="primary">
-                    출석체크 시스템
-                </TypographyAtom>
-                <TypographyAtom variant="body2" color="text.secondary">
-                    {new Date(date).toLocaleDateString('ko-KR', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                    })}
-                </TypographyAtom>
+            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
+                    <TypographyAtom variant="h4" component="h1" fontWeight="bold" color="primary">
+                        출석체크 시스템
+                    </TypographyAtom>
+                    <TypographyAtom variant="body2" color="text.secondary">
+                        {new Date(date).toLocaleDateString('ko-KR', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                        })}
+                    </TypographyAtom>
+                </Box>
+                <Link href="/history" passHref style={{ textDecoration: 'none' }}>
+                    <ButtonAtom label="출석 기록 확인" variant="outlined" color="primary" />
+                </Link>
             </Box>
 
             {error && (
