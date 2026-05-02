@@ -13,9 +13,10 @@ interface AttendanceTableProps {
     students: Student[];
     attendance: Record<string, AttendanceRecord>;
     onStatusChange: (studentId: string, newStatus: AttendanceStatus) => void;
+    onReasonChange: (studentId: string, newReason: string) => void;
 }
 
-export default function AttendanceTable({ students, attendance, onStatusChange }: AttendanceTableProps) {
+export default function AttendanceTable({ students, attendance, onStatusChange, onReasonChange }: AttendanceTableProps) {
     return (
         <TableContainer component={Paper} elevation={2}>
             <Table aria-label="attendance table">
@@ -30,6 +31,9 @@ export default function AttendanceTable({ students, attendance, onStatusChange }
                         <TableCell align="center">
                             <TypographyAtom color="white" fontWeight="bold">출석</TypographyAtom>
                         </TableCell>
+                        <TableCell align="center">
+                            <TypographyAtom color="white" fontWeight="bold">사유</TypographyAtom>
+                        </TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
@@ -37,8 +41,10 @@ export default function AttendanceTable({ students, attendance, onStatusChange }
                         <StudentRow
                             key={student.id}
                             student={student}
-                            currentStatus={attendance[student.id]?.status ?? false} // 기본값: FALSE
+                            currentStatus={attendance[student.id]?.status ?? false}
+                            reason={attendance[student.id]?.reason || ''}
                             onStatusChange={onStatusChange}
+                            onReasonChange={onReasonChange}
                         />
                     ))}
                 </TableBody>

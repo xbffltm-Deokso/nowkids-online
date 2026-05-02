@@ -15,6 +15,7 @@ interface AttendanceFormProps {
     onGradeChange: (grade: string) => void;
     onClassChange: (classNum: number) => void;
     onStatusChange: (studentId: string, newStatus: AttendanceStatus) => void;
+    onReasonChange: (studentId: string, newReason: string) => void;
     onSubmit: () => void;
     selectedGrade: string;
     selectedClass: number;
@@ -28,6 +29,7 @@ export default function AttendanceForm({
     onGradeChange,
     onClassChange,
     onStatusChange,
+    onReasonChange,
     onSubmit,
     selectedGrade,
     selectedClass,
@@ -48,6 +50,7 @@ export default function AttendanceForm({
                     students={students}
                     attendance={attendance}
                     onStatusChange={onStatusChange}
+                    onReasonChange={onReasonChange}
                 />
 
                 <Stack direction="row" justifyContent="flex-end" spacing={2}>

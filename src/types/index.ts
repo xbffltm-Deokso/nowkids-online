@@ -19,6 +19,7 @@ export interface AttendanceRecord {
     studentName?: string;
     date: string; // YYYY-MM-DD
     status: AttendanceStatus;
+    reason?: string;
     timestamp: string; // ISO String
 }
 

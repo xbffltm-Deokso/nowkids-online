@@ -104,6 +104,19 @@ export function useAttendance(grade: string, classNum: number, date: string) {
                 studentName: student?.name,
                 date,
                 status: newStatus,
+                // 출석(TRUE)으로 변경 시 사유(reason) 초기화
+                reason: newStatus ? '' : prev[studentId]?.reason,
+                timestamp: new Date().toISOString(),
+            },
+        }));
+    };
+
+    const updateReason = (studentId: string, newReason: string) => {
+        setAttendance((prev: Record<string, AttendanceRecord>) => ({
+            ...prev,
+            [studentId]: {
+                ...prev[studentId],
+                reason: newReason,
                 timestamp: new Date().toISOString(),
             },
         }));
@@ -126,6 +139,7 @@ export function useAttendance(grade: string, classNum: number, date: string) {
         loading,
         error,
         updateStatus,
+        updateReason,
         saveAttendance,
         refresh: fetchData,
     };
