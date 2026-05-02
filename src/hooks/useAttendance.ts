@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Student, AttendanceRecord, AttendanceStatus } from '@/types';
+import { Student, AttendanceRecord, AttendanceStatus, Gender, StudentStatus } from '@/types';
 import { getStudents, getAttendanceByDate, upsertAttendance } from '@/lib/generated';
 import { dataConnect } from '@/lib/firebase';
 import { signInAnonymously, getAuth } from 'firebase/auth';
@@ -35,9 +35,14 @@ export function useAttendance(grade: string, classNum: number, date: string) {
             const studentsData = studentsRes.data.students;
             const attendanceData = attendanceRes.data.attendanceRecords;
 
-            const studentsWithIds = studentsData.map((s) => ({
-                ...s,
-                id: s.id
+            const studentsWithIds: Student[] = studentsData.map((s) => ({
+                id: s.id,
+                grade: s.grade,
+                classNum: s.classNum,
+                number: s.number,
+                name: s.name,
+                gender: s.gender as Gender,
+                status: s.status as StudentStatus,
             }));
 
             setStudents(studentsWithIds);
