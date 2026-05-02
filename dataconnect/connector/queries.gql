@@ -1,0 +1,34 @@
+query GetStudents($grade: String!, $classNum: Int!) @auth(expr: "auth != null") {
+  students(where: {
+    grade: {eq: $grade},
+    classNum: {eq: $classNum}
+  }, orderBy: [{number: ASC}]) {
+    id
+    grade
+    classNum
+    number
+    name
+    gender
+    status
+  }
+}
+
+query GetAttendanceByDate($date: Date!, $grade: String!, $classNum: Int!) @auth(expr: "auth != null") {
+  attendanceRecords(where: {
+    date: {eq: $date},
+    student: {
+      grade: {eq: $grade},
+      classNum: {eq: $classNum}
+    }
+  }) {
+    id
+    student {
+      id
+      name
+    }
+    date
+    status
+    reason
+    timestamp
+  }
+}

@@ -1,0 +1,18 @@
+type Student @table {
+  id: String!
+  grade: String!
+  classNum: Int!
+  number: Int!
+  name: String!
+  gender: String!
+  status: String!
+}
+
+type AttendanceRecord @table {
+  id: String!
+  student: Student!
+  date: Date!
+  status: Boolean!
+  reason: String
+  timestamp: Timestamp! @default(expr: "request.time")
+}

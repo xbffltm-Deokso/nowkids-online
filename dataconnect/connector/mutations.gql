@@ -1,0 +1,36 @@
+mutation UpsertAttendance(
+  $id: String!,
+  $studentId: String!,
+  $date: Date!,
+  $status: Boolean!,
+  $reason: String
+) @auth(expr: "auth != null") {
+  attendanceRecord_upsert(data: {
+    id: $id,
+    studentId: $studentId,
+    date: $date,
+    status: $status,
+    reason: $reason
+  })
+}
+
+mutation UpsertStudent(
+  $id: String!,
+  $grade: String!,
+  $classNum: Int!,
+  $number: Int!,
+  $name: String!,
+  $gender: String!,
+  $status: String!
+) @auth(expr: "auth != null") {
+  student_upsert(data: {
+    id: $id,
+    grade: $grade,
+    classNum: $classNum,
+    number: $number,
+    name: $name,
+    gender: $gender,
+    status: $status
+  })
+}
+

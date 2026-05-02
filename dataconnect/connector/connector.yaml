@@ -1,0 +1,7 @@
+specVersion: "v1"
+connectorId: "attendance-connector"
+authMode: "PUBLIC"
+generate:
+  javascriptSdk:
+    outputDir: "../../src/lib/generated"
+    package: "@firebasegen/attendance-connector"
