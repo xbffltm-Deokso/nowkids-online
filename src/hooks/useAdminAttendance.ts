@@ -52,10 +52,18 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
                 }
             }
 
-            const [studentsResults, historyResults] = await Promise.all([
-                Promise.all(combinations.map((comb) => getStudents(dataConnect, { grade: comb.grade, classNum: comb.classNum }))),
-                Promise.all(combinations.map((comb) => getAttendanceHistory(dataConnect, { grade: comb.grade, classNum: comb.classNum }))),
-            ]);
+            const studentsResults = [];
+            const historyResults = [];
+            
+            // 24개 병렬 요청이 한 번에 스파이크를 발생시켜 Too many connections 에러가 나므로 조합별 순차(Sequential) 실행으로 커넥션 슬롯을 방어
+            for (const comb of combinations) {
+                const [sRes, hRes] = await Promise.all([
+                    getStudents(dataConnect, { grade: comb.grade, classNum: comb.classNum }),
+                    getAttendanceHistory(dataConnect, { grade: comb.grade, classNum: comb.classNum })
+                ]);
+                studentsResults.push(sRes);
+                historyResults.push(hRes);
+            }
 
             const fetchedStudents: Student[] = studentsResults.flatMap((res) =>
                 res.data.students.map((s) => ({
