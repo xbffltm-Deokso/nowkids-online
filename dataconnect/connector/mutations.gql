@@ -14,6 +14,10 @@ mutation UpsertAttendance(
   })
 }
 
+mutation DeleteStudent($id: String!) @auth(expr: "auth != null") {
+  student_delete(id: $id)
+}
+
 mutation UpsertStudent(
   $id: String!,
   $grade: String!,

@@ -13,6 +13,7 @@ This README will guide you through the process of using the generated JavaScript
   - [*GetAttendanceHistory*](#getattendancehistory)
 - [**Mutations**](#mutations)
   - [*UpsertAttendance*](#upsertattendance)
+  - [*DeleteStudent*](#deletestudent)
   - [*UpsertStudent*](#upsertstudent)
 
 # Accessing the connector
@@ -63,7 +64,7 @@ Below are examples of how to use the `attendance-connector` connector's generate
 ## GetStudents
 You can execute the `GetStudents` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [generated/index.d.ts](./index.d.ts):
 ```typescript
-getStudents(vars: GetStudentsVariables): QueryPromise<GetStudentsData, GetStudentsVariables>;
+getStudents(vars: GetStudentsVariables, options?: ExecuteQueryOptions): QueryPromise<GetStudentsData, GetStudentsVariables>;
 
 interface GetStudentsRef {
   ...
@@ -74,7 +75,7 @@ export const getStudentsRef: GetStudentsRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getStudents(dc: DataConnect, vars: GetStudentsVariables): QueryPromise<GetStudentsData, GetStudentsVariables>;
+getStudents(dc: DataConnect, vars: GetStudentsVariables, options?: ExecuteQueryOptions): QueryPromise<GetStudentsData, GetStudentsVariables>;
 
 interface GetStudentsRef {
   ...
@@ -183,7 +184,7 @@ executeQuery(ref).then((response) => {
 ## GetAttendanceByDate
 You can execute the `GetAttendanceByDate` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [generated/index.d.ts](./index.d.ts):
 ```typescript
-getAttendanceByDate(vars: GetAttendanceByDateVariables): QueryPromise<GetAttendanceByDateData, GetAttendanceByDateVariables>;
+getAttendanceByDate(vars: GetAttendanceByDateVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceByDateData, GetAttendanceByDateVariables>;
 
 interface GetAttendanceByDateRef {
   ...
@@ -194,7 +195,7 @@ export const getAttendanceByDateRef: GetAttendanceByDateRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getAttendanceByDate(dc: DataConnect, vars: GetAttendanceByDateVariables): QueryPromise<GetAttendanceByDateData, GetAttendanceByDateVariables>;
+getAttendanceByDate(dc: DataConnect, vars: GetAttendanceByDateVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceByDateData, GetAttendanceByDateVariables>;
 
 interface GetAttendanceByDateRef {
   ...
@@ -308,7 +309,7 @@ executeQuery(ref).then((response) => {
 ## GetAttendanceHistory
 You can execute the `GetAttendanceHistory` query using the following action shortcut function, or by calling `executeQuery()` after calling the following `QueryRef` function, both of which are defined in [generated/index.d.ts](./index.d.ts):
 ```typescript
-getAttendanceHistory(vars: GetAttendanceHistoryVariables): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+getAttendanceHistory(vars: GetAttendanceHistoryVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
 
 interface GetAttendanceHistoryRef {
   ...
@@ -319,7 +320,7 @@ export const getAttendanceHistoryRef: GetAttendanceHistoryRef;
 ```
 You can also pass in a `DataConnect` instance to the action shortcut function or `QueryRef` function.
 ```typescript
-getAttendanceHistory(dc: DataConnect, vars: GetAttendanceHistoryVariables): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+getAttendanceHistory(dc: DataConnect, vars: GetAttendanceHistoryVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
 
 interface GetAttendanceHistoryRef {
   ...
@@ -560,6 +561,115 @@ console.log(data.attendanceRecord_upsert);
 executeMutation(ref).then((response) => {
   const data = response.data;
   console.log(data.attendanceRecord_upsert);
+});
+```
+
+## DeleteStudent
+You can execute the `DeleteStudent` mutation using the following action shortcut function, or by calling `executeMutation()` after calling the following `MutationRef` function, both of which are defined in [generated/index.d.ts](./index.d.ts):
+```typescript
+deleteStudent(vars: DeleteStudentVariables): MutationPromise<DeleteStudentData, DeleteStudentVariables>;
+
+interface DeleteStudentRef {
+  ...
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: DeleteStudentVariables): MutationRef<DeleteStudentData, DeleteStudentVariables>;
+}
+export const deleteStudentRef: DeleteStudentRef;
+```
+You can also pass in a `DataConnect` instance to the action shortcut function or `MutationRef` function.
+```typescript
+deleteStudent(dc: DataConnect, vars: DeleteStudentVariables): MutationPromise<DeleteStudentData, DeleteStudentVariables>;
+
+interface DeleteStudentRef {
+  ...
+  (dc: DataConnect, vars: DeleteStudentVariables): MutationRef<DeleteStudentData, DeleteStudentVariables>;
+}
+export const deleteStudentRef: DeleteStudentRef;
+```
+
+If you need the name of the operation without creating a ref, you can retrieve the operation name by calling the `operationName` property on the deleteStudentRef:
+```typescript
+const name = deleteStudentRef.operationName;
+console.log(name);
+```
+
+### Variables
+The `DeleteStudent` mutation requires an argument of type `DeleteStudentVariables`, which is defined in [generated/index.d.ts](./index.d.ts). It has the following fields:
+
+```typescript
+export interface DeleteStudentVariables {
+  id: string;
+}
+```
+### Return Type
+Recall that executing the `DeleteStudent` mutation returns a `MutationPromise` that resolves to an object with a `data` property.
+
+The `data` property is an object of type `DeleteStudentData`, which is defined in [generated/index.d.ts](./index.d.ts). It has the following fields:
+```typescript
+export interface DeleteStudentData {
+  student_delete?: Student_Key | null;
+}
+```
+### Using `DeleteStudent`'s action shortcut function
+
+```typescript
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig, deleteStudent, DeleteStudentVariables } from '@firebasegen/attendance-connector';
+
+// The `DeleteStudent` mutation requires an argument of type `DeleteStudentVariables`:
+const deleteStudentVars: DeleteStudentVariables = {
+  id: ..., 
+};
+
+// Call the `deleteStudent()` function to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await deleteStudent(deleteStudentVars);
+// Variables can be defined inline as well.
+const { data } = await deleteStudent({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the action shortcut function.
+const dataConnect = getDataConnect(connectorConfig);
+const { data } = await deleteStudent(dataConnect, deleteStudentVars);
+
+console.log(data.student_delete);
+
+// Or, you can use the `Promise` API.
+deleteStudent(deleteStudentVars).then((response) => {
+  const data = response.data;
+  console.log(data.student_delete);
+});
+```
+
+### Using `DeleteStudent`'s `MutationRef` function
+
+```typescript
+import { getDataConnect, executeMutation } from 'firebase/data-connect';
+import { connectorConfig, deleteStudentRef, DeleteStudentVariables } from '@firebasegen/attendance-connector';
+
+// The `DeleteStudent` mutation requires an argument of type `DeleteStudentVariables`:
+const deleteStudentVars: DeleteStudentVariables = {
+  id: ..., 
+};
+
+// Call the `deleteStudentRef()` function to get a reference to the mutation.
+const ref = deleteStudentRef(deleteStudentVars);
+// Variables can be defined inline as well.
+const ref = deleteStudentRef({ id: ..., });
+
+// You can also pass in a `DataConnect` instance to the `MutationRef` function.
+const dataConnect = getDataConnect(connectorConfig);
+const ref = deleteStudentRef(dataConnect, deleteStudentVars);
+
+// Call `executeMutation()` on the reference to execute the mutation.
+// You can use the `await` keyword to wait for the promise to resolve.
+const { data } = await executeMutation(ref);
+
+console.log(data.student_delete);
+
+// Or, you can use the `Promise` API.
+executeMutation(ref).then((response) => {
+  const data = response.data;
+  console.log(data.student_delete);
 });
 ```
 

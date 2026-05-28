@@ -1,4 +1,4 @@
-import { ConnectorConfig, DataConnect, QueryRef, QueryPromise, MutationRef, MutationPromise } from 'firebase/data-connect';
+import { ConnectorConfig, DataConnect, QueryRef, QueryPromise, ExecuteQueryOptions, MutationRef, MutationPromise } from 'firebase/data-connect';
 
 export const connectorConfig: ConnectorConfig;
 
@@ -13,6 +13,14 @@ export type DateString = string;
 export interface AttendanceRecord_Key {
   id: string;
   __typename?: 'AttendanceRecord_Key';
+}
+
+export interface DeleteStudentData {
+  student_delete?: Student_Key | null;
+}
+
+export interface DeleteStudentVariables {
+  id: string;
 }
 
 export interface GetAttendanceByDateData {
@@ -102,6 +110,42 @@ export interface UpsertStudentVariables {
   status: string;
 }
 
+interface GetStudentsRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetStudentsVariables): QueryRef<GetStudentsData, GetStudentsVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetStudentsVariables): QueryRef<GetStudentsData, GetStudentsVariables>;
+  operationName: string;
+}
+export const getStudentsRef: GetStudentsRef;
+
+export function getStudents(vars: GetStudentsVariables, options?: ExecuteQueryOptions): QueryPromise<GetStudentsData, GetStudentsVariables>;
+export function getStudents(dc: DataConnect, vars: GetStudentsVariables, options?: ExecuteQueryOptions): QueryPromise<GetStudentsData, GetStudentsVariables>;
+
+interface GetAttendanceByDateRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAttendanceByDateVariables): QueryRef<GetAttendanceByDateData, GetAttendanceByDateVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAttendanceByDateVariables): QueryRef<GetAttendanceByDateData, GetAttendanceByDateVariables>;
+  operationName: string;
+}
+export const getAttendanceByDateRef: GetAttendanceByDateRef;
+
+export function getAttendanceByDate(vars: GetAttendanceByDateVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceByDateData, GetAttendanceByDateVariables>;
+export function getAttendanceByDate(dc: DataConnect, vars: GetAttendanceByDateVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceByDateData, GetAttendanceByDateVariables>;
+
+interface GetAttendanceHistoryRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: GetAttendanceHistoryVariables): QueryRef<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: GetAttendanceHistoryVariables): QueryRef<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+  operationName: string;
+}
+export const getAttendanceHistoryRef: GetAttendanceHistoryRef;
+
+export function getAttendanceHistory(vars: GetAttendanceHistoryVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+export function getAttendanceHistory(dc: DataConnect, vars: GetAttendanceHistoryVariables, options?: ExecuteQueryOptions): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
+
 interface UpsertAttendanceRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: UpsertAttendanceVariables): MutationRef<UpsertAttendanceData, UpsertAttendanceVariables>;
@@ -114,6 +158,18 @@ export const upsertAttendanceRef: UpsertAttendanceRef;
 export function upsertAttendance(vars: UpsertAttendanceVariables): MutationPromise<UpsertAttendanceData, UpsertAttendanceVariables>;
 export function upsertAttendance(dc: DataConnect, vars: UpsertAttendanceVariables): MutationPromise<UpsertAttendanceData, UpsertAttendanceVariables>;
 
+interface DeleteStudentRef {
+  /* Allow users to create refs without passing in DataConnect */
+  (vars: DeleteStudentVariables): MutationRef<DeleteStudentData, DeleteStudentVariables>;
+  /* Allow users to pass in custom DataConnect instances */
+  (dc: DataConnect, vars: DeleteStudentVariables): MutationRef<DeleteStudentData, DeleteStudentVariables>;
+  operationName: string;
+}
+export const deleteStudentRef: DeleteStudentRef;
+
+export function deleteStudent(vars: DeleteStudentVariables): MutationPromise<DeleteStudentData, DeleteStudentVariables>;
+export function deleteStudent(dc: DataConnect, vars: DeleteStudentVariables): MutationPromise<DeleteStudentData, DeleteStudentVariables>;
+
 interface UpsertStudentRef {
   /* Allow users to create refs without passing in DataConnect */
   (vars: UpsertStudentVariables): MutationRef<UpsertStudentData, UpsertStudentVariables>;
@@ -125,40 +181,4 @@ export const upsertStudentRef: UpsertStudentRef;
 
 export function upsertStudent(vars: UpsertStudentVariables): MutationPromise<UpsertStudentData, UpsertStudentVariables>;
 export function upsertStudent(dc: DataConnect, vars: UpsertStudentVariables): MutationPromise<UpsertStudentData, UpsertStudentVariables>;
-
-interface GetStudentsRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: GetStudentsVariables): QueryRef<GetStudentsData, GetStudentsVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: GetStudentsVariables): QueryRef<GetStudentsData, GetStudentsVariables>;
-  operationName: string;
-}
-export const getStudentsRef: GetStudentsRef;
-
-export function getStudents(vars: GetStudentsVariables): QueryPromise<GetStudentsData, GetStudentsVariables>;
-export function getStudents(dc: DataConnect, vars: GetStudentsVariables): QueryPromise<GetStudentsData, GetStudentsVariables>;
-
-interface GetAttendanceByDateRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: GetAttendanceByDateVariables): QueryRef<GetAttendanceByDateData, GetAttendanceByDateVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: GetAttendanceByDateVariables): QueryRef<GetAttendanceByDateData, GetAttendanceByDateVariables>;
-  operationName: string;
-}
-export const getAttendanceByDateRef: GetAttendanceByDateRef;
-
-export function getAttendanceByDate(vars: GetAttendanceByDateVariables): QueryPromise<GetAttendanceByDateData, GetAttendanceByDateVariables>;
-export function getAttendanceByDate(dc: DataConnect, vars: GetAttendanceByDateVariables): QueryPromise<GetAttendanceByDateData, GetAttendanceByDateVariables>;
-
-interface GetAttendanceHistoryRef {
-  /* Allow users to create refs without passing in DataConnect */
-  (vars: GetAttendanceHistoryVariables): QueryRef<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
-  /* Allow users to pass in custom DataConnect instances */
-  (dc: DataConnect, vars: GetAttendanceHistoryVariables): QueryRef<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
-  operationName: string;
-}
-export const getAttendanceHistoryRef: GetAttendanceHistoryRef;
-
-export function getAttendanceHistory(vars: GetAttendanceHistoryVariables): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
-export function getAttendanceHistory(dc: DataConnect, vars: GetAttendanceHistoryVariables): QueryPromise<GetAttendanceHistoryData, GetAttendanceHistoryVariables>;
 
