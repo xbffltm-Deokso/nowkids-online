@@ -22,6 +22,8 @@ export interface UseAdminAttendanceResult {
     refresh: () => void;
 }
 
+const ALL_CLASSES = [1, 2, 3, 4];
+
 export function useAdminAttendance(grade: string, classNum: number): UseAdminAttendanceResult {
     const [students, setStudents] = useState<Student[]>([]);
     const [rows, setRows] = useState<AttendanceMatrixRow[]>([]);
@@ -39,36 +41,43 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
                 await signInAnonymously(auth);
             }
 
-            const [studentsRes, historyRes] = await Promise.all([
-                getStudents(dataConnect, { grade, classNum }),
-                getAttendanceHistory(dataConnect, { grade, classNum }),
+            // classNum=0 이면 전체 반 병렬 조회
+            const classList = classNum === 0 ? ALL_CLASSES : [classNum];
+
+            const [studentsResults, historyResults] = await Promise.all([
+                Promise.all(classList.map((c) => getStudents(dataConnect, { grade, classNum: c }))),
+                Promise.all(classList.map((c) => getAttendanceHistory(dataConnect, { grade, classNum: c }))),
             ]);
 
-            const fetchedStudents: Student[] = studentsRes.data.students.map((s) => ({
-                id: s.id,
-                grade: s.grade,
-                classNum: s.classNum,
-                number: s.number,
-                name: s.name,
-                gender: s.gender as any,
-                status: s.status as any,
-            }));
+            const fetchedStudents: Student[] = studentsResults.flatMap((res) =>
+                res.data.students.map((s) => ({
+                    id: s.id,
+                    grade: s.grade,
+                    classNum: s.classNum,
+                    number: s.number,
+                    name: s.name,
+                    gender: s.gender as any,
+                    status: s.status as any,
+                }))
+            );
 
             // studentId -> date -> status 매핑 및 전체 날짜 수집
             const attendanceMap: Record<string, Record<string, boolean>> = {};
             const dateSet = new Set<string>();
 
+            for (const historyRes of historyResults) {
             for (const record of historyRes.data.attendanceRecords) {
                 const sid = record.student.id;
                 if (!attendanceMap[sid]) attendanceMap[sid] = {};
                 attendanceMap[sid][record.date] = record.status;
                 dateSet.add(record.date);
             }
+            }
 
             const sortedDates = Array.from(dateSet).sort();
 
             const matrixRows: AttendanceMatrixRow[] = fetchedStudents
-                .sort((a, b) => a.number - b.number)
+                .sort((a, b) => a.classNum !== b.classNum ? a.classNum - b.classNum : a.number - b.number)
                 .map((student) => {
                     const records = attendanceMap[student.id] ?? {};
                     const presentCount = Object.values(records).filter(Boolean).length;

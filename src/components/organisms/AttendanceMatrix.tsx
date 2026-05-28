@@ -36,14 +36,18 @@ function StatusCell({ status }: { status: boolean | undefined }) {
 }
 
 function downloadCSV(rows: AttendanceMatrixRow[], dates: string[], grade: string, classNum: number) {
-    const header = ['번호', '이름', ...dates.map(formatDateShort), '출석', '결석', '출석률'].join(',');
+    const showClass = classNum === 0;
+    const baseHeader = showClass ? ['반', '번호', '이름'] : ['번호', '이름'];
+    const header = [...baseHeader, ...dates.map(formatDateShort), '출석', '결석', '출석률'].join(',');
     const dataRows = rows.map((row) => {
+        const baseCells = showClass
+            ? [row.student.classNum, row.student.number, row.student.name]
+            : [row.student.number, row.student.name];
         const cells = [
-            row.student.number,
-            row.student.name,
+            ...baseCells,
             ...dates.map((d) => {
                 const s = row.records[d];
-                return s === null ? '-' : s ? 'O' : 'X';
+                return s === undefined ? '-' : s ? 'O' : 'X';
             }),
             row.presentCount,
             row.absentCount,
@@ -59,13 +63,16 @@ function downloadCSV(rows: AttendanceMatrixRow[], dates: string[], grade: string
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `출석_${grade}_${classNum}반.csv`;
+    a.download = `출석_${grade}_${classNum === 0 ? '전체' : `${classNum}반`}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
 
 export default function AttendanceMatrix({ rows, dates, grade, classNum }: AttendanceMatrixProps) {
     const stickyCell = { position: 'sticky' as const, background: 'white', zIndex: 1 };
+    const showClass = classNum === 0;
+    // 반 컬럼이 있을 때 이름 컬럼의 left 위치 조정
+    const nameLeft = showClass ? 96 : 48;
 
     return (
         <Box>
@@ -85,10 +92,15 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                 <Table size="small" stickyHeader aria-label="attendance matrix">
                     <TableHead>
                         <TableRow>
-                            <TableCell align="center" sx={{ ...stickyCell, left: 0, minWidth: 48, zIndex: 3 }}>
+                            {showClass && (
+                                <TableCell align="center" sx={{ ...stickyCell, left: 0, minWidth: 48, zIndex: 3 }}>
+                                    반
+                                </TableCell>
+                            )}
+                            <TableCell align="center" sx={{ ...stickyCell, left: showClass ? 48 : 0, minWidth: 48, zIndex: 3 }}>
                                 번호
                             </TableCell>
-                            <TableCell sx={{ ...stickyCell, left: 48, minWidth: 80, zIndex: 3 }}>
+                            <TableCell sx={{ ...stickyCell, left: nameLeft, minWidth: 80, zIndex: 3 }}>
                                 이름
                             </TableCell>
                             {dates.map((d) => (
@@ -105,7 +117,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                     <TableBody>
                         {rows.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={dates.length + 5} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                                <TableCell colSpan={dates.length + (showClass ? 6 : 5)} align="center" sx={{ py: 6, color: 'text.secondary' }}>
                                     데이터가 없습니다.
                                 </TableCell>
                             </TableRow>
@@ -115,10 +127,15 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                                 const rate = total > 0 ? Math.round((row.presentCount / total) * 100) : null;
                                 return (
                                     <TableRow key={row.student.id} hover>
-                                        <TableCell align="center" sx={{ ...stickyCell, left: 0, fontWeight: 'bold' }}>
+                                        {showClass && (
+                                            <TableCell align="center" sx={{ ...stickyCell, left: 0, fontWeight: 'bold' }}>
+                                                {row.student.classNum}반
+                                            </TableCell>
+                                        )}
+                                        <TableCell align="center" sx={{ ...stickyCell, left: showClass ? 48 : 0, fontWeight: 'bold' }}>
                                             {row.student.number}
                                         </TableCell>
-                                        <TableCell sx={{ ...stickyCell, left: 48 }}>
+                                        <TableCell sx={{ ...stickyCell, left: nameLeft }}>
                                             {row.student.name}
                                         </TableCell>
                                         {dates.map((d) => (
