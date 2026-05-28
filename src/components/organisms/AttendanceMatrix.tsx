@@ -104,6 +104,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
     const [selectedGrades, setSelectedGrades] = React.useState<string[]>([]);
     const [selectedClasses, setSelectedClasses] = React.useState<number[]>([]);
     const [sortBy, setSortBy] = React.useState<string>('default');
+    const [sortHistory, setSortHistory] = React.useState<string[]>(['default']);
 
     // 2. 현재 데이터셋 내 존재하는 유니크 학년 및 반 추출
     const availableGrades = React.useMemo(() => {
@@ -127,7 +128,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
         setSelectedClasses(availableClasses);
     }, [availableClasses]);
 
-    // 3. 다중 조건 복합 필터링 및 다차원 정렬 실행 파이프라인
+    // 3. 다중 조건 복합 필터링 및 다중 순위 체인 정렬 실행 파이프라인
     const filteredAndSortedRows = React.useMemo(() => {
         return rows
             .filter((row) => {
@@ -148,32 +149,39 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                 return true;
             })
             .sort((a, b) => {
-                const totalA = a.presentCount + a.absentCount;
-                const totalB = b.presentCount + b.absentCount;
-                const rateA = totalA > 0 ? a.presentCount / totalA : -1;
-                const rateB = totalB > 0 ? b.presentCount / totalB : -1;
+                const getComparison = (criterion: string) => {
+                    const totalA = a.presentCount + a.absentCount;
+                    const totalB = b.presentCount + b.absentCount;
+                    const rateA = totalA > 0 ? a.presentCount / totalA : -1;
+                    const rateB = totalB > 0 ? b.presentCount / totalB : -1;
 
-                switch (sortBy) {
-                    case 'name':
-                        return a.student.name.localeCompare(b.student.name);
-                    case 'attendanceDesc':
-                        if (rateA !== rateB) return rateB - rateA;
-                        return a.student.name.localeCompare(b.student.name);
-                    case 'attendanceAsc':
-                        if (rateA !== rateB) return rateA - rateB;
-                        return a.student.name.localeCompare(b.student.name);
-                    case 'default':
-                    default:
-                        if (a.student.grade !== b.student.grade) {
-                            return a.student.grade.localeCompare(b.student.grade);
-                        }
-                        if (a.student.classNum !== b.student.classNum) {
-                            return a.student.classNum - b.student.classNum;
-                        }
-                        return a.student.number - b.student.number;
+                    switch (criterion) {
+                        case 'name':
+                            return a.student.name.localeCompare(b.student.name);
+                        case 'attendanceDesc':
+                            return rateB - rateA;
+                        case 'attendanceAsc':
+                            return rateA - rateB;
+                        case 'default':
+                        default:
+                            if (a.student.grade !== b.student.grade) {
+                                return a.student.grade.localeCompare(b.student.grade);
+                            }
+                            if (a.student.classNum !== b.student.classNum) {
+                                return a.student.classNum - b.student.classNum;
+                            }
+                            return a.student.number - b.student.number;
+                    }
+                };
+
+                // 누적된 정렬 체인을 순회하며 동점자 차순위 정렬 수행
+                for (const criterion of sortHistory) {
+                    const result = getComparison(criterion);
+                    if (result !== 0) return result;
                 }
+                return 0;
             });
-    }, [rows, searchTerm, selectedGrades, selectedClasses, sortBy]);
+    }, [rows, searchTerm, selectedGrades, selectedClasses, sortHistory]);
 
     const handleGradeChange = (event: SelectChangeEvent<string[]>) => {
         const val = event.target.value;
@@ -186,7 +194,13 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
     };
 
     const handleSortChange = (event: SelectChangeEvent<string>) => {
-        setSortBy(event.target.value);
+        const nextSort = event.target.value;
+        setSortBy(nextSort);
+        setSortHistory((prev) => {
+            // 새 정렬 기준을 맨 앞에 배치하고 기존 히스토리에서 중복 제거하여 차순위 체인 형성
+            const filtered = prev.filter((k) => k !== nextSort);
+            return [nextSort, ...filtered];
+        });
     };
 
     return (
