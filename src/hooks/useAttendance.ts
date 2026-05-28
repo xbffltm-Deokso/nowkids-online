@@ -13,6 +13,10 @@ export function useAttendance(grade: string, classNum: number, date: string) {
     const [error, setError] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
+        if (!grade) {
+            setLoading(false);
+            return;
+        }
         setLoading(true);
         setError(null);
         try {

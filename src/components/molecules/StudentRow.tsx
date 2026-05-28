@@ -84,17 +84,6 @@ export default function StudentRow({
                             sx={{ width: 150 }}
                         />
                     )}
-                    {displayValue === '기타' && isPreset && (
-                         <TextField
-                            size="small"
-                            value=""
-                            onChange={handleReasonTextChange}
-                            placeholder="사유 입력"
-                            autoFocus
-                            disabled={currentStatus}
-                            sx={{ width: 150 }}
-                        />
-                    )}
                 </Stack>
             </TableCell>
         </TableRow>
