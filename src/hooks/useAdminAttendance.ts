@@ -22,6 +22,7 @@ export interface UseAdminAttendanceResult {
     refresh: () => void;
 }
 
+const ALL_GRADES = ['4.믿음', '5.소망', '6.사랑'];
 const ALL_CLASSES = [1, 2, 3, 4];
 
 export function useAdminAttendance(grade: string, classNum: number): UseAdminAttendanceResult {
@@ -41,12 +42,19 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
                 await signInAnonymously(auth);
             }
 
-            // classNum=0 이면 전체 반 병렬 조회
+            const gradeList = grade === 'all' ? ALL_GRADES : [grade];
             const classList = classNum === 0 ? ALL_CLASSES : [classNum];
 
+            const combinations: { grade: string; classNum: number }[] = [];
+            for (const g of gradeList) {
+                for (const c of classList) {
+                    combinations.push({ grade: g, classNum: c });
+                }
+            }
+
             const [studentsResults, historyResults] = await Promise.all([
-                Promise.all(classList.map((c) => getStudents(dataConnect, { grade, classNum: c }))),
-                Promise.all(classList.map((c) => getAttendanceHistory(dataConnect, { grade, classNum: c }))),
+                Promise.all(combinations.map((comb) => getStudents(dataConnect, { grade: comb.grade, classNum: comb.classNum }))),
+                Promise.all(combinations.map((comb) => getAttendanceHistory(dataConnect, { grade: comb.grade, classNum: comb.classNum }))),
             ]);
 
             const fetchedStudents: Student[] = studentsResults.flatMap((res) =>
@@ -66,18 +74,26 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
             const dateSet = new Set<string>();
 
             for (const historyRes of historyResults) {
-            for (const record of historyRes.data.attendanceRecords) {
-                const sid = record.student.id;
-                if (!attendanceMap[sid]) attendanceMap[sid] = {};
-                attendanceMap[sid][record.date] = record.status;
-                dateSet.add(record.date);
-            }
+                for (const record of historyRes.data.attendanceRecords) {
+                    const sid = record.student.id;
+                    if (!attendanceMap[sid]) attendanceMap[sid] = {};
+                    attendanceMap[sid][record.date] = record.status;
+                    dateSet.add(record.date);
+                }
             }
 
             const sortedDates = Array.from(dateSet).sort();
 
             const matrixRows: AttendanceMatrixRow[] = fetchedStudents
-                .sort((a, b) => a.classNum !== b.classNum ? a.classNum - b.classNum : a.number - b.number)
+                .sort((a, b) => {
+                    if (a.grade !== b.grade) {
+                        return a.grade.localeCompare(b.grade);
+                    }
+                    if (a.classNum !== b.classNum) {
+                        return a.classNum - b.classNum;
+                    }
+                    return a.number - b.number;
+                })
                 .map((student) => {
                     const records = attendanceMap[student.id] ?? {};
                     const presentCount = Object.values(records).filter(Boolean).length;

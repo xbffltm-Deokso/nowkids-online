@@ -30,7 +30,7 @@ export default function AdminPage() {
 
     const [topTab, setTopTab] = useState(0); // 0=출석 관리, 1=학생 관리
 
-    const [selectedGrade, setSelectedGrade] = useState(grades[0] ?? '');
+    const [selectedGrade, setSelectedGrade] = useState('all');
     const [selectedClass, setSelectedClass] = useState(0); // 0 = 전체 반
     const [mode, setMode] = useState<ViewMode>('weekly');
 
@@ -99,6 +99,7 @@ export default function AdminPage() {
                             onGradeChange={setSelectedGrade}
                             onClassChange={setSelectedClass}
                             showAllClassOption
+                            showAllGradeOption
                         />
                         <ViewModeSelector
                             mode={mode}

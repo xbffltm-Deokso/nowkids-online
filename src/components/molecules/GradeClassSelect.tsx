@@ -19,6 +19,7 @@ interface GradeClassSelectProps {
     onGradeChange: (grade: string) => void;
     onClassChange: (classNum: number) => void;
     showAllClassOption?: boolean; // classNum=0 "전체" 옵션 표시
+    showAllGradeOption?: boolean; // grade="all" "전체 학년" 옵션 표시
 }
 
 export default function GradeClassSelect({
@@ -29,6 +30,7 @@ export default function GradeClassSelect({
     onGradeChange,
     onClassChange,
     showAllClassOption = false,
+    showAllGradeOption = false,
 }: GradeClassSelectProps) {
     const handleGradeChange = (event: SelectChangeEvent<string>) => {
         onGradeChange(event.target.value);
@@ -49,6 +51,9 @@ export default function GradeClassSelect({
                     label="학년"
                     onChange={handleGradeChange}
                 >
+                    {showAllGradeOption && (
+                        <MenuItem value="all">전체 학년</MenuItem>
+                    )}
                     {grades.map((grade) => (
                         <MenuItem key={grade} value={grade}>
                             {grade}
