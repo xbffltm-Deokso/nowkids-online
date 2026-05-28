@@ -79,9 +79,10 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
             setStudents(fetchedStudents);
             setRows(matrixRows);
             setAllDates(sortedDates);
-        } catch (err) {
-            console.error(err);
-            setError('데이터를 불러오는데 실패했습니다.');
+        } catch (err: any) {
+            const msg = err?.message || String(err);
+            setError(`데이터 로드 실패: ${msg}`);
+            console.error('[useAdminAttendance]', err);
         } finally {
             setLoading(false);
         }

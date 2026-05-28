@@ -82,9 +82,10 @@ export function useAttendance(grade: string, classNum: number, date: string) {
             });
 
             setAttendance(attendanceMap);
-        } catch (err) {
-            setError('데이터를 불러오는데 실패했습니다.');
-            console.error(err);
+        } catch (err: any) {
+            const msg = err?.message || String(err);
+            setError(`데이터 로드 실패: ${msg}`);
+            console.error('[useAttendance]', err);
         } finally {
             setLoading(false);
         }

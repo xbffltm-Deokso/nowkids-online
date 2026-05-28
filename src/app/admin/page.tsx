@@ -3,6 +3,8 @@
 import { useState, useMemo } from 'react';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
@@ -13,6 +15,7 @@ import TypographyAtom from '@/components/atoms/TypographyAtom';
 import GradeClassSelect from '@/components/molecules/GradeClassSelect';
 import ViewModeSelector, { ViewMode } from '@/components/molecules/ViewModeSelector';
 import AttendanceMatrix from '@/components/organisms/AttendanceMatrix';
+import StudentManagementPanel from '@/components/organisms/StudentManagementPanel';
 import { useGrades } from '@/hooks/useGrades';
 import { useAdminAttendance, AttendanceMatrixRow } from '@/hooks/useAdminAttendance';
 import {
@@ -24,6 +27,8 @@ import {
 
 export default function AdminPage() {
     const { grades, classes } = useGrades();
+
+    const [topTab, setTopTab] = useState(0); // 0=출석 관리, 1=학생 관리
 
     const [selectedGrade, setSelectedGrade] = useState(grades[0] ?? '');
     const [selectedClass, setSelectedClass] = useState(1);
@@ -38,7 +43,6 @@ export default function AdminPage() {
 
     const { rows: allRows, allDates, loading, error } = useAdminAttendance(selectedGrade, selectedClass);
 
-    // 뷰 모드에 따라 표시할 날짜 필터링
     const filteredDates = useMemo(() => {
         if (mode === 'weekly') {
             return allDates.filter((d) => d === currentWeek);
@@ -50,7 +54,6 @@ export default function AdminPage() {
         return allDates;
     }, [mode, allDates, currentWeek, year, quarter]);
 
-    // 필터된 날짜 기준으로 출석/결석 카운트 재계산
     const filteredRows = useMemo((): AttendanceMatrixRow[] => {
         return allRows.map((row) => {
             let presentCount = 0;
@@ -80,41 +83,52 @@ export default function AdminPage() {
                 </TypographyAtom>
             </Box>
 
-            <Stack spacing={2} sx={{ mb: 3 }}>
-                <GradeClassSelect
-                    grades={grades}
-                    classes={classes}
-                    selectedGrade={selectedGrade}
-                    selectedClass={selectedClass}
-                    onGradeChange={setSelectedGrade}
-                    onClassChange={setSelectedClass}
-                />
-                <ViewModeSelector
-                    mode={mode}
-                    onModeChange={setMode}
-                    currentWeek={currentWeek}
-                    onWeekChange={setCurrentWeek}
-                    year={year}
-                    quarter={quarter}
-                    onYearChange={setYear}
-                    onQuarterChange={setQuarter}
-                />
-            </Stack>
+            <Tabs value={topTab} onChange={(_, v) => setTopTab(v)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+                <Tab label="출석 관리" />
+                <Tab label="학생 관리" />
+            </Tabs>
 
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+            {topTab === 0 && (
+                <>
+                    <Stack spacing={2} sx={{ mb: 3 }}>
+                        <GradeClassSelect
+                            grades={grades}
+                            classes={classes}
+                            selectedGrade={selectedGrade}
+                            selectedClass={selectedClass}
+                            onGradeChange={setSelectedGrade}
+                            onClassChange={setSelectedClass}
+                        />
+                        <ViewModeSelector
+                            mode={mode}
+                            onModeChange={setMode}
+                            currentWeek={currentWeek}
+                            onWeekChange={setCurrentWeek}
+                            year={year}
+                            quarter={quarter}
+                            onYearChange={setYear}
+                            onQuarterChange={setQuarter}
+                        />
+                    </Stack>
 
-            {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                    <CircularProgress />
-                </Box>
-            ) : (
-                <AttendanceMatrix
-                    rows={filteredRows}
-                    dates={filteredDates}
-                    grade={selectedGrade}
-                    classNum={selectedClass}
-                />
+                    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+                    {loading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                            <CircularProgress />
+                        </Box>
+                    ) : (
+                        <AttendanceMatrix
+                            rows={filteredRows}
+                            dates={filteredDates}
+                            grade={selectedGrade}
+                            classNum={selectedClass}
+                        />
+                    )}
+                </>
             )}
+
+            {topTab === 1 && <StudentManagementPanel />}
         </Container>
     );
 }
