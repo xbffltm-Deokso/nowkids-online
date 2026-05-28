@@ -20,18 +20,32 @@ interface AttendanceMatrixProps {
     classNum: number;
 }
 
-function StatusCell({ status }: { status: boolean | undefined }) {
-    if (status === undefined) {
+function StatusCell({ 
+    record, 
+    showReason = false 
+}: { 
+    record: { status: boolean; reason?: string | null } | undefined;
+    showReason?: boolean;
+}) {
+    if (record === undefined) {
         return <Typography variant="body2" color="text.disabled">-</Typography>;
     }
+    const { status, reason } = record;
     return (
-        <Typography
-            variant="body2"
-            fontWeight="bold"
-            sx={{ color: status ? 'success.main' : 'error.main' }}
-        >
-            {status ? '✓' : '✗'}
-        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Typography
+                variant="body2"
+                fontWeight="bold"
+                sx={{ color: status ? 'success.main' : 'error.main' }}
+            >
+                {status ? '✓' : '✗'}
+            </Typography>
+            {showReason && !status && reason && (
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', mt: 0.5 }}>
+                    ({reason})
+                </Typography>
+            )}
+        </Box>
     );
 }
 
@@ -47,7 +61,8 @@ function downloadCSV(rows: AttendanceMatrixRow[], dates: string[], grade: string
             ...baseCells,
             ...dates.map((d) => {
                 const s = row.records[d];
-                return s === undefined ? '-' : s ? 'O' : 'X';
+                if (s === undefined) return '-';
+                return s.status ? 'O' : s.reason ? `X(${s.reason})` : 'X';
             }),
             row.presentCount,
             row.absentCount,
@@ -140,7 +155,10 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                                         </TableCell>
                                         {dates.map((d) => (
                                             <TableCell key={d} align="center" sx={{ px: 1 }}>
-                                                <StatusCell status={row.records[d] as boolean | undefined} />
+                                                <StatusCell 
+                                                    record={row.records[d]} 
+                                                    showReason={dates.length === 1}
+                                                />
                                             </TableCell>
                                         ))}
                                         <TableCell align="center" sx={{ color: 'success.main', fontWeight: 'bold' }}>

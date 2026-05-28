@@ -8,7 +8,7 @@ import { Student } from '@/types';
 
 export interface AttendanceMatrixRow {
     student: Student;
-    records: Record<string, boolean>; // date -> true(출석)/false(결석)
+    records: Record<string, { status: boolean; reason?: string | null }>; // date -> { status, reason }
     presentCount: number;
     absentCount: number;
 }
@@ -70,14 +70,17 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
             );
 
             // studentId -> date -> status 매핑 및 전체 날짜 수집
-            const attendanceMap: Record<string, Record<string, boolean>> = {};
+            const attendanceMap: Record<string, Record<string, { status: boolean; reason?: string | null }>> = {};
             const dateSet = new Set<string>();
 
             for (const historyRes of historyResults) {
                 for (const record of historyRes.data.attendanceRecords) {
                     const sid = record.student.id;
                     if (!attendanceMap[sid]) attendanceMap[sid] = {};
-                    attendanceMap[sid][record.date] = record.status;
+                    attendanceMap[sid][record.date] = {
+                        status: record.status,
+                        reason: record.reason,
+                    };
                     dateSet.add(record.date);
                 }
             }
@@ -96,8 +99,8 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
                 })
                 .map((student) => {
                     const records = attendanceMap[student.id] ?? {};
-                    const presentCount = Object.values(records).filter(Boolean).length;
-                    const absentCount = Object.values(records).filter((v) => !v).length;
+                    const presentCount = Object.values(records).filter((v) => v.status).length;
+                    const absentCount = Object.values(records).filter((v) => !v.status).length;
                     return { student, records, presentCount, absentCount };
                 });
 

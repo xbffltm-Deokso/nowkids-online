@@ -58,11 +58,11 @@ export default function AdminPage() {
         return allRows.map((row) => {
             let presentCount = 0;
             let absentCount = 0;
-            const records: Record<string, boolean> = {};
+            const records: Record<string, { status: boolean; reason?: string | null }> = {};
             for (const d of filteredDates) {
                 if (d in row.records) {
                     records[d] = row.records[d];
-                    if (row.records[d]) presentCount++;
+                    if (row.records[d].status) presentCount++;
                     else absentCount++;
                 }
             }
