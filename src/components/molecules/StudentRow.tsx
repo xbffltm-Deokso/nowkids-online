@@ -5,6 +5,8 @@ import TableRow from '@mui/material/TableRow';
 import TableCell from '@mui/material/TableCell';
 import Checkbox from '@mui/material/Checkbox';
 import Stack from '@mui/material/Stack';
+import IconButton from '@mui/material/IconButton';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { Student, AttendanceStatus } from '@/types';
 import TypographyAtom from '@/components/atoms/TypographyAtom';
 
@@ -14,6 +16,7 @@ interface StudentRowProps {
     reason: string;
     onStatusChange: (studentId: string, newStatus: AttendanceStatus) => void;
     onReasonChange: (studentId: string, newReason: string) => void;
+    onRemoveStudent?: (studentId: string) => void;
 }
 
 const PRESET_REASONS = ['여행', '병결', '상례', '대회 출전'];
@@ -23,7 +26,8 @@ export default function StudentRow({
     currentStatus, 
     reason, 
     onStatusChange, 
-    onReasonChange 
+    onReasonChange,
+    onRemoveStudent
 }: StudentRowProps) {
     const handleCheckboxChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         onStatusChange(student.id, event.target.checked);
@@ -37,17 +41,11 @@ export default function StudentRow({
         onReasonChange(student.id, event.target.value);
     };
 
-    // 현재 사유가 프리셋에 있는지 확인
     const isPreset = PRESET_REASONS.includes(reason) || reason === '';
     const displayValue = isPreset ? reason : '기타';
 
     return (
         <TableRow hover>
-            <TableCell align="center">
-                <TypographyAtom variant="body1" fontWeight="bold">
-                    {student.number}
-                </TypographyAtom>
-            </TableCell>
             <TableCell>
                 <TypographyAtom variant="body1">{student.name}</TypographyAtom>
             </TableCell>
@@ -64,7 +62,7 @@ export default function StudentRow({
                         value={displayValue}
                         onChange={handleReasonSelectChange}
                         size="small"
-                        disabled={currentStatus} // 출석 시 비활성화
+                        disabled={currentStatus}
                         sx={{ minWidth: 120 }}
                     >
                         <MenuItem value=""><em>선택 없음</em></MenuItem>
@@ -85,6 +83,16 @@ export default function StudentRow({
                         />
                     )}
                 </Stack>
+            </TableCell>
+            <TableCell align="center">
+                <IconButton 
+                    size="small" 
+                    color="error" 
+                    onClick={() => onRemoveStudent?.(student.id)}
+                    title="학생 삭제"
+                >
+                    <DeleteIcon fontSize="small" />
+                </IconButton>
             </TableCell>
         </TableRow>
     );

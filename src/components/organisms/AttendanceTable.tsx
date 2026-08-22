@@ -14,17 +14,15 @@ interface AttendanceTableProps {
     attendance: Record<string, AttendanceRecord>;
     onStatusChange: (studentId: string, newStatus: AttendanceStatus) => void;
     onReasonChange: (studentId: string, newReason: string) => void;
+    onRemoveStudent?: (studentId: string) => void;
 }
 
-export default function AttendanceTable({ students, attendance, onStatusChange, onReasonChange }: AttendanceTableProps) {
+export default function AttendanceTable({ students, attendance, onStatusChange, onReasonChange, onRemoveStudent }: AttendanceTableProps) {
     return (
         <TableContainer component={Paper} elevation={2}>
             <Table aria-label="attendance table">
                 <TableHead>
                     <TableRow sx={{ backgroundColor: 'primary.light' }}>
-                        <TableCell align="center">
-                            <TypographyAtom color="white" fontWeight="bold">번호</TypographyAtom>
-                        </TableCell>
                         <TableCell>
                             <TypographyAtom color="white" fontWeight="bold">이름</TypographyAtom>
                         </TableCell>
@@ -33,6 +31,9 @@ export default function AttendanceTable({ students, attendance, onStatusChange, 
                         </TableCell>
                         <TableCell align="center">
                             <TypographyAtom color="white" fontWeight="bold">사유</TypographyAtom>
+                        </TableCell>
+                        <TableCell align="center" sx={{ width: 80 }}>
+                            <TypographyAtom color="white" fontWeight="bold">관리</TypographyAtom>
                         </TableCell>
                     </TableRow>
                 </TableHead>
@@ -45,6 +46,7 @@ export default function AttendanceTable({ students, attendance, onStatusChange, 
                             reason={attendance[student.id]?.reason || ''}
                             onStatusChange={onStatusChange}
                             onReasonChange={onReasonChange}
+                            onRemoveStudent={onRemoveStudent}
                         />
                     ))}
                 </TableBody>

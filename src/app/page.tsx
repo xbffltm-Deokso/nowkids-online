@@ -20,7 +20,7 @@ export default function HomePage() {
     const [selectedClass, setSelectedClass] = useState(1);
 
     const { grades, classes } = useGrades();
-    const { students, attendance, loading, error, updateStatus, updateReason, saveAttendance } = useAttendance(
+    const { students, attendance, loading, error, updateStatus, updateReason, saveAttendance, addStudent, removeStudent } = useAttendance(
         selectedGrade,
         selectedClass,
         date
@@ -78,6 +78,8 @@ export default function HomePage() {
                     onStatusChange={updateStatus}
                     onReasonChange={updateReason}
                     onSubmit={saveAttendance}
+                    onAddStudent={addStudent}
+                    onRemoveStudent={removeStudent}
                     selectedGrade={selectedGrade}
                     selectedClass={selectedClass}
                 />

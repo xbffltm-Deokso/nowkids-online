@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Student, AttendanceRecord, AttendanceStatus, Gender, StudentStatus } from '@/types';
-import { getStudents, getAttendanceByDate, upsertAttendance } from '@/lib/generated';
+import { getStudents, getAttendanceByDate, upsertAttendance, upsertStudent, deleteStudent } from '@/lib/generated';
 import { dataConnect } from '@/lib/firebase';
 import { signInAnonymously, getAuth } from 'firebase/auth';
 
@@ -47,7 +47,7 @@ export function useAttendance(grade: string, classNum: number, date: string) {
                 name: s.name,
                 gender: s.gender as Gender,
                 status: s.status as StudentStatus,
-            }));
+            })).sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
 
             setStudents(studentsWithIds);
             
@@ -145,6 +145,37 @@ export function useAttendance(grade: string, classNum: number, date: string) {
         }
     };
 
+    const addStudent = async (name: string) => {
+        if (!name.trim()) return;
+        const newId = `student_${Date.now()}`;
+        try {
+            await upsertStudent(dataConnect, {
+                id: newId,
+                grade,
+                classNum,
+                number: 0,
+                name: name.trim(),
+                gender: 'M', // 기본값
+                status: 'ENROLLED'
+            });
+            await fetchData();
+        } catch (e) {
+            console.error(e);
+            alert('학생 추가 실패');
+        }
+    };
+
+    const removeStudent = async (studentId: string) => {
+        if (!confirm('정말 삭제하시겠습니까?')) return;
+        try {
+            await deleteStudent(dataConnect, { id: studentId });
+            await fetchData();
+        } catch (e) {
+            console.error(e);
+            alert('학생 삭제 실패');
+        }
+    };
+
     return {
         students,
         attendance,
@@ -153,6 +184,8 @@ export function useAttendance(grade: string, classNum: number, date: string) {
         updateStatus,
         updateReason,
         saveAttendance,
+        addStudent,
+        removeStudent,
         refresh: fetchData,
     };
 }

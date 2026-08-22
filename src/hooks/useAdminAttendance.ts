@@ -98,13 +98,9 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
 
             const matrixRows: AttendanceMatrixRow[] = fetchedStudents
                 .sort((a, b) => {
-                    if (a.grade !== b.grade) {
-                        return a.grade.localeCompare(b.grade);
-                    }
-                    if (a.classNum !== b.classNum) {
-                        return a.classNum - b.classNum;
-                    }
-                    return a.number - b.number;
+                    if (a.grade !== b.grade) return a.grade.localeCompare(b.grade);
+                    if (a.classNum !== b.classNum) return a.classNum - b.classNum;
+                    return a.name.localeCompare(b.name, 'ko-KR');
                 })
                 .map((student) => {
                     const records = attendanceMap[student.id] ?? {};
@@ -141,7 +137,7 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
             // 24개 스파이크 방어를 위해 순차 실행
             for (const [key, val] of entries) {
                 const { studentId, date, status, reason } = val;
-                // status가 undefined/null인 경우(미기록 전환) DB 삭제를 지원하지 않으므로 skip
+                // status가 undefined/null인 경우 DB 삭제를 지원하지 않으므로 skip
                 if (!studentId || !date || status === undefined || status === null) continue;
                 
                 await upsertAttendance(dataConnect, {
@@ -153,7 +149,25 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
                 });
             }
             
-            await fetchData();
+            // UI를 강제 새로고침 전 즉시 반영 (Optimistic Update)
+            setRows(prevRows => prevRows.map(row => {
+                let rowChanged = false;
+                const newRecords = { ...row.records };
+                for (const [, val] of entries) {
+                    if (val.studentId === row.student.id && val.status !== undefined && val.status !== null) {
+                        newRecords[val.date] = { status: val.status, reason: val.reason || null };
+                        rowChanged = true;
+                    }
+                }
+                if (!rowChanged) return row;
+                
+                const presentCount = Object.values(newRecords).filter(v => v.status).length;
+                const absentCount = Object.values(newRecords).filter(v => !v.status).length;
+                return { ...row, records: newRecords, presentCount, absentCount };
+            }));
+
+            // 백그라운드에서 전체 갱신 (비동기 처리)
+            fetchData();
             return true;
         } catch (err: any) {
             const msg = err?.message || String(err);

@@ -144,12 +144,12 @@ function downloadCSV(
     pendingChanges: Record<string, PendingChange>
 ) {
     const showClass = classNum === 0;
-    const baseHeader = showClass ? ['학년', '반', '번호', '이름'] : ['번호', '이름'];
+    const baseHeader = showClass ? ['학년', '반', '이름'] : ['이름'];
     const header = [...baseHeader, ...dates.map(formatDateShort), '출석', '결석', '출석률'].join(',');
     const dataRows = rows.map((row) => {
         const baseCells = showClass
-            ? [row.student.grade, row.student.classNum, row.student.number, row.student.name]
-            : [row.student.number, row.student.name];
+            ? [row.student.grade, row.student.classNum, row.student.name]
+            : [row.student.name];
             
         const cells = [
             ...baseCells,
@@ -183,7 +183,7 @@ function downloadCSV(
 export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveBatch }: AttendanceMatrixProps) {
     const stickyCell = { position: 'sticky' as const, background: 'white', zIndex: 1 };
     const showClass = classNum === 0;
-    const nameLeft = showClass ? 96 : 48;
+    const nameLeft = showClass ? 48 : 0;
 
     // 1. 고급 필터 제어 상태
     const [searchTerm, setSearchTerm] = useState('');
@@ -238,14 +238,14 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                     const rateB = totalB > 0 ? b.presentCount / totalB : -1;
 
                     switch (criterion) {
-                        case 'name': return a.student.name.localeCompare(b.student.name);
+                        case 'name': return a.student.name.localeCompare(b.student.name, 'ko-KR');
                         case 'attendanceDesc': return rateB - rateA;
                         case 'attendanceAsc': return rateA - rateB;
                         case 'default':
                         default:
                             if (a.student.grade !== b.student.grade) return a.student.grade.localeCompare(b.student.grade);
                             if (a.student.classNum !== b.student.classNum) return a.student.classNum - b.student.classNum;
-                            return a.student.number - b.student.number;
+                            return a.student.name.localeCompare(b.student.name, 'ko-KR');
                     }
                 };
                 for (const criterion of sortHistory) {
@@ -364,7 +364,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                                     setSortHistory((prev) => [e.target.value, ...prev.filter(k => k !== e.target.value)]);
                                 }}
                             >
-                                <MenuItem value="default">기본 (학년/반/번호)</MenuItem>
+                                <MenuItem value="default">기본 (학년/반/이름)</MenuItem>
                                 <MenuItem value="name">이름 가나다순</MenuItem>
                                 <MenuItem value="attendanceDesc">출석률 높은 순</MenuItem>
                                 <MenuItem value="attendanceAsc">출석률 낮은 순</MenuItem>
@@ -428,7 +428,6 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                             {showClass && (
                                 <TableCell align="center" sx={{ ...stickyCell, left: 0, minWidth: 48, zIndex: 3 }}>반</TableCell>
                             )}
-                            <TableCell align="center" sx={{ ...stickyCell, left: showClass ? 48 : 0, minWidth: 48, zIndex: 3 }}>번호</TableCell>
                             <TableCell sx={{ ...stickyCell, left: nameLeft, minWidth: 80, zIndex: 3 }}>이름</TableCell>
                             {dates.map((d) => (
                                 <TableCell key={d} align="center" sx={{ minWidth: 60, px: 1 }}>
@@ -472,9 +471,6 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                                                 {row.student.classNum}반
                                             </TableCell>
                                         )}
-                                        <TableCell align="center" sx={{ ...stickyCell, left: showClass ? 48 : 0, fontWeight: 'bold' }}>
-                                            {row.student.number}
-                                        </TableCell>
                                         <TableCell sx={{ ...stickyCell, left: nameLeft }}>
                                             {row.student.name}
                                         </TableCell>
