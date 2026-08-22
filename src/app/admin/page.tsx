@@ -23,6 +23,7 @@ import {
     getQuarter,
     getQuarterRange,
     isInDateRange,
+    getSundaysInRange,
 } from '@/utils/dateUtils';
 
 export default function AdminPage() {
@@ -45,11 +46,11 @@ export default function AdminPage() {
 
     const filteredDates = useMemo(() => {
         if (mode === 'weekly') {
-            return allDates.filter((d) => d === currentWeek);
+            return [currentWeek]; // 주간 모드는 해당 주차(일요일) 1개만 고정 노출
         }
         if (mode === 'quarterly') {
             const { start, end } = getQuarterRange(year, quarter);
-            return allDates.filter((d) => isInDateRange(d, start, end));
+            return getSundaysInRange(start, end); // 기록 여부와 상관없이 해당 분기의 모든 일요일 컬럼을 생성
         }
         return allDates;
     }, [mode, allDates, currentWeek, year, quarter]);
