@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { dataConnect } from '@/lib/firebase';
-import { getStudents, getAttendanceHistory } from '@/lib/generated';
+import { getStudents, getAttendanceHistory, upsertAttendance } from '@/lib/generated';
 import { Student } from '@/types';
 
 export interface AttendanceMatrixRow {
@@ -20,6 +20,7 @@ export interface UseAdminAttendanceResult {
     loading: boolean;
     error: string | null;
     refresh: () => void;
+    saveBatchAttendance: (changes: Record<string, { status: boolean; reason?: string | null }>) => Promise<boolean>;
 }
 
 const ALL_GRADES = ['4.믿음', '5.소망', '6.사랑'];
@@ -124,9 +125,49 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
         }
     }, [grade, classNum]);
 
+    const saveBatchAttendance = useCallback(async (
+        changes: Record<string, { status: boolean; reason?: string | null }>
+    ) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const auth = getAuth();
+            if (!auth.currentUser) {
+                await signInAnonymously(auth);
+            }
+
+            const entries = Object.entries(changes);
+            
+            // 24개 스파이크 방어를 위해 순차 실행
+            for (const [key, val] of entries) {
+                const [studentId, date] = key.split('_');
+                // status가 undefined/null인 경우(미기록 전환) DB 삭제를 지원하지 않으므로 skip
+                if (!studentId || !date || val.status === undefined || val.status === null) continue;
+                
+                await upsertAttendance(dataConnect, {
+                    id: `${studentId}_${date}`,
+                    studentId,
+                    date,
+                    status: val.status,
+                    reason: val.reason || null
+                });
+            }
+            
+            await fetchData();
+            return true;
+        } catch (err: any) {
+            const msg = err?.message || String(err);
+            setError(`일괄 저장 실패: ${msg}`);
+            console.error('[saveBatchAttendance]', err);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }, [fetchData]);
+
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
-    return { students, rows, allDates, loading, error, refresh: fetchData };
+    return { students, rows, allDates, loading, error, refresh: fetchData, saveBatchAttendance };
 }

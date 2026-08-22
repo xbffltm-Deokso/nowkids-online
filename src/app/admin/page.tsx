@@ -41,7 +41,7 @@ export default function AdminPage() {
     const [year, setYear] = useState(now.getFullYear());
     const [quarter, setQuarter] = useState<1 | 2 | 3 | 4>(getQuarter(todaySunday));
 
-    const { rows: allRows, allDates, loading, error } = useAdminAttendance(selectedGrade, selectedClass);
+    const { rows: allRows, allDates, loading, error, saveBatchAttendance } = useAdminAttendance(selectedGrade, selectedClass);
 
     const filteredDates = useMemo(() => {
         if (mode === 'weekly') {
@@ -125,6 +125,7 @@ export default function AdminPage() {
                             dates={filteredDates}
                             grade={selectedGrade}
                             classNum={selectedClass}
+                            onSaveBatch={saveBatchAttendance}
                         />
                     )}
                 </>

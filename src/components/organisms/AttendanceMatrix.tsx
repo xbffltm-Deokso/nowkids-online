@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -21,46 +21,126 @@ import Grid from '@mui/material/Grid';
 import InputAdornment from '@mui/material/InputAdornment';
 import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
+import SaveIcon from '@mui/icons-material/Save';
+import CloseIcon from '@mui/icons-material/Close';
+import CircularProgress from '@mui/material/CircularProgress';
 import { AttendanceMatrixRow } from '@/hooks/useAdminAttendance';
 import { formatDateShort } from '@/utils/dateUtils';
+
+export interface PendingChange {
+    status: boolean | undefined;
+    reason?: string | null;
+}
 
 interface AttendanceMatrixProps {
     rows: AttendanceMatrixRow[];
     dates: string[];
     grade: string;
     classNum: number;
+    onSaveBatch?: (changes: Record<string, { status: boolean; reason?: string | null }>) => Promise<boolean>;
 }
 
 function StatusCell({ 
     record, 
-    showReason = false 
+    showReason = false,
+    isPending = false,
+    rowIndex,
+    colIndex,
+    studentId,
+    date,
+    currentStatus,
+    onToggle
 }: { 
     record: { status: boolean; reason?: string | null } | undefined;
     showReason?: boolean;
+    isPending?: boolean;
+    rowIndex: number;
+    colIndex: number;
+    studentId: string;
+    date: string;
+    currentStatus: boolean | undefined;
+    onToggle: (studentId: string, date: string, currentStatus: boolean | undefined) => void;
 }) {
-    if (record === undefined) {
-        return <Typography variant="body2" color="text.disabled">-</Typography>;
-    }
-    const { status, reason } = record;
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === ' ') {
+            e.preventDefault();
+            onToggle(studentId, date, currentStatus);
+        } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+            e.preventDefault();
+            let nextRow = rowIndex;
+            let nextCol = colIndex;
+            if (e.key === 'ArrowUp') nextRow--;
+            if (e.key === 'ArrowDown') nextRow++;
+            if (e.key === 'ArrowLeft') nextCol--;
+            if (e.key === 'ArrowRight') nextCol++;
+            
+            const nextCell = document.querySelector(`[data-cell="${nextRow}-${nextCol}"]`) as HTMLElement;
+            if (nextCell) nextCell.focus();
+        }
+    };
+
+    const status = record?.status;
+    const reason = record?.reason;
+
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Typography
-                variant="body2"
-                fontWeight="bold"
-                sx={{ color: status ? 'success.main' : 'error.main' }}
-            >
-                {status ? '✓' : '✗'}
-            </Typography>
-            {showReason && !status && reason && (
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', mt: 0.5 }}>
-                    ({reason})
-                </Typography>
+        <Box 
+            data-cell={`${rowIndex}-${colIndex}`}
+            tabIndex={0}
+            onClick={() => onToggle(studentId, date, currentStatus)}
+            onKeyDown={handleKeyDown}
+            sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '100%',
+                height: '100%',
+                minHeight: 36,
+                cursor: 'pointer',
+                bgcolor: isPending ? 'warning.100' : 'transparent',
+                border: isPending ? '1px solid' : '1px solid transparent',
+                borderColor: isPending ? 'warning.main' : 'transparent',
+                borderRadius: 1,
+                outline: 'none',
+                transition: 'all 0.1s',
+                '&:focus': {
+                    boxShadow: '0 0 0 2px #1976d2',
+                    bgcolor: isPending ? 'warning.200' : 'action.hover'
+                },
+                '&:hover': {
+                    bgcolor: isPending ? 'warning.200' : 'action.hover'
+                }
+            }}
+        >
+            {record === undefined ? (
+                <Typography variant="body2" color="text.disabled">-</Typography>
+            ) : (
+                <>
+                    <Typography
+                        variant="body2"
+                        fontWeight="bold"
+                        sx={{ color: status ? 'success.main' : 'error.main' }}
+                    >
+                        {status ? '✓' : '✗'}
+                    </Typography>
+                    {showReason && !status && reason && (
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem', mt: 0.5 }}>
+                            ({reason})
+                        </Typography>
+                    )}
+                </>
             )}
         </Box>
     );
 }
 
-function downloadCSV(rows: AttendanceMatrixRow[], dates: string[], grade: string, classNum: number) {
+function downloadCSV(
+    rows: AttendanceMatrixRow[], 
+    dates: string[], 
+    grade: string, 
+    classNum: number,
+    pendingChanges: Record<string, PendingChange>
+) {
     const showClass = classNum === 0;
     const baseHeader = showClass ? ['학년', '반', '번호', '이름'] : ['번호', '이름'];
     const header = [...baseHeader, ...dates.map(formatDateShort), '출석', '결석', '출석률'].join(',');
@@ -68,10 +148,14 @@ function downloadCSV(rows: AttendanceMatrixRow[], dates: string[], grade: string
         const baseCells = showClass
             ? [row.student.grade, row.student.classNum, row.student.number, row.student.name]
             : [row.student.number, row.student.name];
+            
         const cells = [
             ...baseCells,
             ...dates.map((d) => {
-                const s = row.records[d];
+                const key = `${row.student.id}_${d}`;
+                const pending = pendingChanges[key];
+                const s = pending ? (pending.status !== undefined ? { status: pending.status, reason: pending.reason } : undefined) : row.records[d];
+                
                 if (s === undefined) return '-';
                 return s.status ? 'O' : s.reason ? `X(${s.reason})` : 'X';
             }),
@@ -84,7 +168,7 @@ function downloadCSV(rows: AttendanceMatrixRow[], dates: string[], grade: string
         return cells.join(',');
     });
 
-    const csv = '﻿' + [header, ...dataRows].join('\n');
+    const csv = '\uFEFF' + [header, ...dataRows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -94,58 +178,54 @@ function downloadCSV(rows: AttendanceMatrixRow[], dates: string[], grade: string
     URL.revokeObjectURL(url);
 }
 
-export default function AttendanceMatrix({ rows, dates, grade, classNum }: AttendanceMatrixProps) {
+export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveBatch }: AttendanceMatrixProps) {
     const stickyCell = { position: 'sticky' as const, background: 'white', zIndex: 1 };
     const showClass = classNum === 0;
     const nameLeft = showClass ? 96 : 48;
 
     // 1. 고급 필터 제어 상태
-    const [searchTerm, setSearchTerm] = React.useState('');
-    const [selectedGrades, setSelectedGrades] = React.useState<string[]>([]);
-    const [selectedClasses, setSelectedClasses] = React.useState<number[]>([]);
-    const [sortBy, setSortBy] = React.useState<string>('default');
-    const [sortHistory, setSortHistory] = React.useState<string[]>(['default']);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
+    const [selectedClasses, setSelectedClasses] = useState<number[]>([]);
+    const [sortBy, setSortBy] = useState<string>('default');
+    const [sortHistory, setSortHistory] = useState<string[]>(['default']);
+    
+    // 2. 임시 저장 상태 (Batch Save)
+    const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
+    const [isSaving, setIsSaving] = useState(false);
+    
+    const pendingCount = Object.keys(pendingChanges).length;
 
-    // 2. 현재 데이터셋 내 존재하는 유니크 학년 및 반 추출
-    const availableGrades = React.useMemo(() => {
+    // 데이터 변경 시 pending 비우기
+    useEffect(() => {
+        setPendingChanges({});
+    }, [grade, classNum, dates]);
+
+    const availableGrades = useMemo(() => {
         const set = new Set<string>();
         rows.forEach((r) => set.add(r.student.grade));
         return Array.from(set).sort();
     }, [rows]);
 
-    const availableClasses = React.useMemo(() => {
+    const availableClasses = useMemo(() => {
         const set = new Set<number>();
         rows.forEach((r) => set.add(r.student.classNum));
         return Array.from(set).sort((a, b) => a - b);
     }, [rows]);
 
-    // 원본 데이터셋 갱신 시 필터 다중 선택 초기화
-    React.useEffect(() => {
-        setSelectedGrades(availableGrades);
-    }, [availableGrades]);
+    useEffect(() => { setSelectedGrades(availableGrades); }, [availableGrades]);
+    useEffect(() => { setSelectedClasses(availableClasses); }, [availableClasses]);
 
-    React.useEffect(() => {
-        setSelectedClasses(availableClasses);
-    }, [availableClasses]);
-
-    // 3. 다중 조건 복합 필터링 및 다중 순위 체인 정렬 실행 파이프라인
-    const filteredAndSortedRows = React.useMemo(() => {
+    const filteredAndSortedRows = useMemo(() => {
         return rows
             .filter((row) => {
-                // 이름 매칭 (공백 제거 및 대소문자 무시)
                 if (searchTerm.trim() !== '') {
                     const term = searchTerm.toLowerCase().replace(/\s+/g, '');
                     const name = row.student.name.toLowerCase().replace(/\s+/g, '');
                     if (!name.includes(term)) return false;
                 }
-                // 학년 다중 매칭
-                if (selectedGrades.length > 0 && !selectedGrades.includes(row.student.grade)) {
-                    return false;
-                }
-                // 반 다중 매칭
-                if (selectedClasses.length > 0 && !selectedClasses.includes(row.student.classNum)) {
-                    return false;
-                }
+                if (selectedGrades.length > 0 && !selectedGrades.includes(row.student.grade)) return false;
+                if (selectedClasses.length > 0 && !selectedClasses.includes(row.student.classNum)) return false;
                 return true;
             })
             .sort((a, b) => {
@@ -156,25 +236,16 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                     const rateB = totalB > 0 ? b.presentCount / totalB : -1;
 
                     switch (criterion) {
-                        case 'name':
-                            return a.student.name.localeCompare(b.student.name);
-                        case 'attendanceDesc':
-                            return rateB - rateA;
-                        case 'attendanceAsc':
-                            return rateA - rateB;
+                        case 'name': return a.student.name.localeCompare(b.student.name);
+                        case 'attendanceDesc': return rateB - rateA;
+                        case 'attendanceAsc': return rateA - rateB;
                         case 'default':
                         default:
-                            if (a.student.grade !== b.student.grade) {
-                                return a.student.grade.localeCompare(b.student.grade);
-                            }
-                            if (a.student.classNum !== b.student.classNum) {
-                                return a.student.classNum - b.student.classNum;
-                            }
+                            if (a.student.grade !== b.student.grade) return a.student.grade.localeCompare(b.student.grade);
+                            if (a.student.classNum !== b.student.classNum) return a.student.classNum - b.student.classNum;
                             return a.student.number - b.student.number;
                     }
                 };
-
-                // 누적된 정렬 체인을 순회하며 동점자 차순위 정렬 수행
                 for (const criterion of sortHistory) {
                     const result = getComparison(criterion);
                     if (result !== 0) return result;
@@ -183,24 +254,42 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
             });
     }, [rows, searchTerm, selectedGrades, selectedClasses, sortHistory]);
 
-    const handleGradeChange = (event: SelectChangeEvent<string[]>) => {
-        const val = event.target.value;
-        setSelectedGrades(typeof val === 'string' ? val.split(',') : val);
-    };
+    const handleToggle = (studentId: string, date: string, currentStatus: boolean | undefined) => {
+        const key = `${studentId}_${date}`;
+        const row = rows.find(r => r.student.id === studentId);
+        const originalStatus = row?.records[date]?.status;
 
-    const handleClassChange = (event: SelectChangeEvent<number[]>) => {
-        const val = event.target.value;
-        setSelectedClasses(typeof val === 'string' ? val.split(',').map(Number) : val as number[]);
-    };
+        setPendingChanges((prev) => {
+            const next = { ...prev };
+            
+            let nextStatus: boolean | undefined = undefined;
+            if (currentStatus === undefined) nextStatus = true;
+            else if (currentStatus === true) nextStatus = false;
+            else if (currentStatus === false) nextStatus = undefined;
 
-    const handleSortChange = (event: SelectChangeEvent<string>) => {
-        const nextSort = event.target.value;
-        setSortBy(nextSort);
-        setSortHistory((prev) => {
-            // 새 정렬 기준을 맨 앞에 배치하고 기존 히스토리에서 중복 제거하여 차순위 체인 형성
-            const filtered = prev.filter((k) => k !== nextSort);
-            return [nextSort, ...filtered];
+            if (nextStatus === originalStatus) {
+                delete next[key];
+            } else {
+                next[key] = { status: nextStatus, reason: null };
+            }
+            return next;
         });
+    };
+
+    const handleSaveBatch = async () => {
+        if (!onSaveBatch || pendingCount === 0) return;
+        setIsSaving(true);
+        const savePayload: Record<string, { status: boolean; reason?: string | null }> = {};
+        for (const [key, val] of Object.entries(pendingChanges)) {
+            if (val.status !== undefined) {
+                savePayload[key] = { status: val.status, reason: val.reason };
+            }
+        }
+        const success = await onSaveBatch(savePayload);
+        if (success) {
+            setPendingChanges({});
+        }
+        setIsSaving(false);
     };
 
     return (
@@ -216,11 +305,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             InputProps={{
-                                startAdornment: (
-                                    <InputAdornment position="start">
-                                        <SearchIcon fontSize="small" color="action" />
-                                    </InputAdornment>
-                                ),
+                                startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" color="action" /></InputAdornment>,
                             }}
                         />
                     </Grid>
@@ -228,14 +313,13 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                         <>
                             <Grid item xs={6} sm={2.5}>
                                 <FormControl fullWidth size="small">
-                                    <InputLabel id="filter-grade-label">학년 필터</InputLabel>
+                                    <InputLabel>학년 필터</InputLabel>
                                     <Select
-                                        labelId="filter-grade-label"
                                         multiple
                                         value={selectedGrades}
-                                        onChange={handleGradeChange}
+                                        onChange={(e) => setSelectedGrades(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
                                         input={<OutlinedInput label="학년 필터" />}
-                                        renderValue={(selected) => `${selected.length}개 학년 선택됨`}
+                                        renderValue={(s) => `${s.length}개 학년`}
                                     >
                                         {availableGrades.map((g) => (
                                             <MenuItem key={g} value={g}>
@@ -248,14 +332,13 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                             </Grid>
                             <Grid item xs={6} sm={2.5}>
                                 <FormControl fullWidth size="small">
-                                    <InputLabel id="filter-class-label">반 필터</InputLabel>
+                                    <InputLabel>반 필터</InputLabel>
                                     <Select
-                                        labelId="filter-class-label"
                                         multiple
                                         value={selectedClasses}
-                                        onChange={handleClassChange}
+                                        onChange={(e) => setSelectedClasses(typeof e.target.value === 'string' ? e.target.value.split(',').map(Number) : e.target.value as number[])}
                                         input={<OutlinedInput label="반 필터" />}
-                                        renderValue={(selected) => `${selected.length}개 반 선택됨`}
+                                        renderValue={(s) => `${s.length}개 반`}
                                     >
                                         {availableClasses.map((c) => (
                                             <MenuItem key={c} value={c}>
@@ -268,14 +351,16 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                             </Grid>
                         </>
                     )}
-                    <Grid item xs={12} sm={showClass ? 2 : 5}>
+                    <Grid item xs={12} sm={showClass ? 2 : 7}>
                         <FormControl fullWidth size="small">
-                            <InputLabel id="sort-select-label">정렬 기준</InputLabel>
+                            <InputLabel>정렬 기준</InputLabel>
                             <Select
-                                labelId="sort-select-label"
                                 value={sortBy}
                                 label="정렬 기준"
-                                onChange={handleSortChange}
+                                onChange={(e) => {
+                                    setSortBy(e.target.value);
+                                    setSortHistory((prev) => [e.target.value, ...prev.filter(k => k !== e.target.value)]);
+                                }}
                             >
                                 <MenuItem value="default">기본 (학년/반/번호)</MenuItem>
                                 <MenuItem value="name">이름 가나다순</MenuItem>
@@ -290,20 +375,48 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                             size="medium"
                             startIcon={<DownloadIcon />}
                             variant="contained"
-                            onClick={() => downloadCSV(filteredAndSortedRows, dates, grade, classNum)}
+                            onClick={() => downloadCSV(filteredAndSortedRows, dates, grade, classNum, pendingChanges)}
                             disabled={filteredAndSortedRows.length === 0}
                         >
-                            CSV 내보내기
+                            내보내기
                         </Button>
                     </Grid>
                 </Grid>
             </Paper>
 
-            {/* 필터 결과 통계 요약 */}
-            <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* 변경사항 및 통계 요약 바 */}
+            <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 36 }}>
                 <Typography variant="body2" color="text.secondary">
                     검색 결과: 총 {filteredAndSortedRows.length}명
                 </Typography>
+                
+                {pendingCount > 0 && (
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Typography variant="body2" color="warning.main" fontWeight="bold">
+                            {pendingCount}개의 변경사항 대기 중
+                        </Typography>
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            color="inherit"
+                            startIcon={<CloseIcon />}
+                            onClick={() => setPendingChanges({})}
+                            disabled={isSaving}
+                        >
+                            취소
+                        </Button>
+                        <Button
+                            size="small"
+                            variant="contained"
+                            color="warning"
+                            startIcon={isSaving ? <CircularProgress size={16} /> : <SaveIcon />}
+                            onClick={handleSaveBatch}
+                            disabled={isSaving}
+                        >
+                            변경사항 저장
+                        </Button>
+                    </Box>
+                )}
             </Box>
 
             <TableContainer component={Paper} elevation={2} sx={{ overflowX: 'auto', maxHeight: 600 }}>
@@ -311,16 +424,10 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                     <TableHead>
                         <TableRow>
                             {showClass && (
-                                <TableCell align="center" sx={{ ...stickyCell, left: 0, minWidth: 48, zIndex: 3 }}>
-                                    반
-                                </TableCell>
+                                <TableCell align="center" sx={{ ...stickyCell, left: 0, minWidth: 48, zIndex: 3 }}>반</TableCell>
                             )}
-                            <TableCell align="center" sx={{ ...stickyCell, left: showClass ? 48 : 0, minWidth: 48, zIndex: 3 }}>
-                                번호
-                            </TableCell>
-                            <TableCell sx={{ ...stickyCell, left: nameLeft, minWidth: 80, zIndex: 3 }}>
-                                이름
-                            </TableCell>
+                            <TableCell align="center" sx={{ ...stickyCell, left: showClass ? 48 : 0, minWidth: 48, zIndex: 3 }}>번호</TableCell>
+                            <TableCell sx={{ ...stickyCell, left: nameLeft, minWidth: 80, zIndex: 3 }}>이름</TableCell>
                             {dates.map((d) => (
                                 <TableCell key={d} align="center" sx={{ minWidth: 60, px: 1 }}>
                                     <Typography variant="caption" display="block">{formatDateShort(d)}</Typography>
@@ -340,9 +447,22 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filteredAndSortedRows.map((row) => {
-                                const total = row.presentCount + row.absentCount;
-                                const rate = total > 0 ? Math.round((row.presentCount / total) * 100) : null;
+                            filteredAndSortedRows.map((row, rowIndex) => {
+                                // 출석률 계산을 위해 Pending Changes 반영
+                                let dynamicPresent = 0;
+                                let dynamicAbsent = 0;
+                                dates.forEach(d => {
+                                    const key = `${row.student.id}_${d}`;
+                                    const pending = pendingChanges[key];
+                                    const s = pending ? (pending.status !== undefined ? { status: pending.status, reason: pending.reason } : undefined) : row.records[d];
+                                    if (s) {
+                                        if (s.status) dynamicPresent++;
+                                        else dynamicAbsent++;
+                                    }
+                                });
+                                const total = dynamicPresent + dynamicAbsent;
+                                const rate = total > 0 ? Math.round((dynamicPresent / total) * 100) : null;
+
                                 return (
                                     <TableRow key={row.student.id} hover>
                                         {showClass && (
@@ -356,19 +476,39 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum }: Atten
                                         <TableCell sx={{ ...stickyCell, left: nameLeft }}>
                                             {row.student.name}
                                         </TableCell>
-                                        {dates.map((d) => (
-                                            <TableCell key={d} align="center" sx={{ px: 1 }}>
-                                                <StatusCell 
-                                                    record={row.records[d]} 
-                                                    showReason={dates.length === 1}
-                                                />
-                                            </TableCell>
-                                        ))}
+                                        {dates.map((d, colIndex) => {
+                                            const key = `${row.student.id}_${d}`;
+                                            const pending = pendingChanges[key];
+                                            const originalRecord = row.records[d];
+                                            const isPending = !!pending;
+                                            
+                                            const currentRecord = isPending 
+                                                ? (pending.status !== undefined ? { status: pending.status, reason: pending.reason } : undefined) 
+                                                : originalRecord;
+                                                
+                                            const currentStatus = isPending ? pending.status : originalRecord?.status;
+
+                                            return (
+                                                <TableCell key={d} align="center" sx={{ p: 0.5 }}>
+                                                    <StatusCell 
+                                                        record={currentRecord} 
+                                                        showReason={dates.length === 1}
+                                                        isPending={isPending}
+                                                        rowIndex={rowIndex}
+                                                        colIndex={colIndex}
+                                                        studentId={row.student.id}
+                                                        date={d}
+                                                        currentStatus={currentStatus}
+                                                        onToggle={handleToggle}
+                                                    />
+                                                </TableCell>
+                                            );
+                                        })}
                                         <TableCell align="center" sx={{ color: 'success.main', fontWeight: 'bold' }}>
-                                            {row.presentCount}
+                                            {dynamicPresent}
                                         </TableCell>
                                         <TableCell align="center" sx={{ color: 'error.main', fontWeight: 'bold' }}>
-                                            {row.absentCount}
+                                            {dynamicAbsent}
                                         </TableCell>
                                         <TableCell align="center">
                                             <Typography
