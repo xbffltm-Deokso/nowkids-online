@@ -12,13 +12,13 @@ export function useAttendance(grade: string, classNum: number, date: string) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchData = useCallback(async () => {
+    const fetchData = useCallback(async (isSilent = false) => {
         if (!grade) {
-            setLoading(false);
+            if (!isSilent) setLoading(false);
             return;
         }
-        setLoading(true);
-        setError(null);
+        if (!isSilent) setLoading(true);
+        if (!isSilent) setError(null);
         try {
             // Firebase 익명 로그인 (Data Connect USER 권한 요구사항 우회용)
             const auth = getAuth();
@@ -84,15 +84,15 @@ export function useAttendance(grade: string, classNum: number, date: string) {
             setAttendance(attendanceMap);
         } catch (err: any) {
             const msg = err?.message || String(err);
-            setError(`데이터 로드 실패: ${msg}`);
+            if (!isSilent) setError(`데이터 로드 실패: ${msg}`);
             console.error('[useAttendance]', err);
         } finally {
-            setLoading(false);
+            if (!isSilent) setLoading(false);
         }
     }, [grade, classNum, date]);
 
     useEffect(() => {
-        fetchData();
+        fetchData(false);
     }, [fetchData]);
 
     const updateStatus = (studentId: string, newStatus: AttendanceStatus) => {
@@ -148,31 +148,69 @@ export function useAttendance(grade: string, classNum: number, date: string) {
     const addStudent = async (name: string) => {
         if (!name.trim()) return;
         const newId = `student_${Date.now()}`;
+        
+        // 1. 낙관적 업데이트 (Optimistic UI) - 즉각 화면 반영
+        const newStudent: Student = {
+            id: newId,
+            grade,
+            classNum,
+            number: 0,
+            name: name.trim(),
+            gender: 'M',
+            status: '재학'
+        };
+        
+        setStudents(prev => [...prev, newStudent].sort((a, b) => a.name.localeCompare(b.name, 'ko-KR')));
+        setAttendance(prev => ({
+            ...prev,
+            [newId]: {
+                id: `${newId}_${date}`,
+                studentId: newId,
+                studentName: name.trim(),
+                date,
+                status: false,
+                reason: '',
+                timestamp: new Date().toISOString(),
+            }
+        }));
+
         try {
+            // 2. 서버 반영
             await upsertStudent(dataConnect, {
                 id: newId,
                 grade,
                 classNum,
                 number: 0,
                 name: name.trim(),
-                gender: 'M', // 기본값
-                status: 'ENROLLED'
+                gender: 'M',
+                status: '재학'
             });
-            await fetchData();
+            fetchData(true); // 조용히 백그라운드 갱신
         } catch (e) {
             console.error(e);
             alert('학생 추가 실패');
+            fetchData(true); // 실패 시 롤백
         }
     };
 
     const removeStudent = async (studentId: string) => {
         if (!confirm('정말 삭제하시겠습니까?')) return;
+        
+        // 낙관적 업데이트 (즉각 화면에서 제거)
+        setStudents(prev => prev.filter(s => s.id !== studentId));
+        setAttendance(prev => {
+            const next = { ...prev };
+            delete next[studentId];
+            return next;
+        });
+
         try {
             await deleteStudent(dataConnect, { id: studentId });
-            await fetchData();
+            fetchData(true); // 조용히 백그라운드 갱신
         } catch (e) {
             console.error(e);
             alert('학생 삭제 실패');
+            fetchData(true); // 실패 시 롤백
         }
     };
 
