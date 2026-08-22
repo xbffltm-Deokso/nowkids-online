@@ -28,6 +28,8 @@ import { AttendanceMatrixRow } from '@/hooks/useAdminAttendance';
 import { formatDateShort } from '@/utils/dateUtils';
 
 export interface PendingChange {
+    studentId: string;
+    date: string;
     status: boolean | undefined;
     reason?: string | null;
 }
@@ -37,7 +39,7 @@ interface AttendanceMatrixProps {
     dates: string[];
     grade: string;
     classNum: number;
-    onSaveBatch?: (changes: Record<string, { status: boolean; reason?: string | null }>) => Promise<boolean>;
+    onSaveBatch?: (changes: Record<string, { studentId: string; date: string; status: boolean; reason?: string | null }>) => Promise<boolean>;
 }
 
 function StatusCell({ 
@@ -270,7 +272,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
             if (nextStatus === originalStatus) {
                 delete next[key];
             } else {
-                next[key] = { status: nextStatus, reason: null };
+                next[key] = { studentId, date, status: nextStatus, reason: null };
             }
             return next;
         });
@@ -279,10 +281,10 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
     const handleSaveBatch = async () => {
         if (!onSaveBatch || pendingCount === 0) return;
         setIsSaving(true);
-        const savePayload: Record<string, { status: boolean; reason?: string | null }> = {};
+        const savePayload: Record<string, { studentId: string; date: string; status: boolean; reason?: string | null }> = {};
         for (const [key, val] of Object.entries(pendingChanges)) {
             if (val.status !== undefined) {
-                savePayload[key] = { status: val.status, reason: val.reason };
+                savePayload[key] = { studentId: val.studentId, date: val.date, status: val.status, reason: val.reason };
             }
         }
         const success = await onSaveBatch(savePayload);

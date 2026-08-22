@@ -20,7 +20,7 @@ export interface UseAdminAttendanceResult {
     loading: boolean;
     error: string | null;
     refresh: () => void;
-    saveBatchAttendance: (changes: Record<string, { status: boolean; reason?: string | null }>) => Promise<boolean>;
+    saveBatchAttendance: (changes: Record<string, { studentId: string; date: string; status: boolean; reason?: string | null }>) => Promise<boolean>;
 }
 
 const ALL_GRADES = ['4.믿음', '5.소망', '6.사랑'];
@@ -126,7 +126,7 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
     }, [grade, classNum]);
 
     const saveBatchAttendance = useCallback(async (
-        changes: Record<string, { status: boolean; reason?: string | null }>
+        changes: Record<string, { studentId: string; date: string; status: boolean; reason?: string | null }>
     ) => {
         setLoading(true);
         setError(null);
@@ -140,16 +140,16 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
             
             // 24개 스파이크 방어를 위해 순차 실행
             for (const [key, val] of entries) {
-                const [studentId, date] = key.split('_');
+                const { studentId, date, status, reason } = val;
                 // status가 undefined/null인 경우(미기록 전환) DB 삭제를 지원하지 않으므로 skip
-                if (!studentId || !date || val.status === undefined || val.status === null) continue;
+                if (!studentId || !date || status === undefined || status === null) continue;
                 
                 await upsertAttendance(dataConnect, {
                     id: `${studentId}_${date}`,
                     studentId,
                     date,
-                    status: val.status,
-                    reason: val.reason || null
+                    status,
+                    reason: reason || null
                 });
             }
             
