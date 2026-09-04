@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getAuth, signInAnonymously } from 'firebase/auth';
-import { dataConnect } from '@/lib/firebase';
-import { getStudents, getAttendanceHistory, upsertAttendance } from '@/lib/generated';
 import { Student } from '@/types';
+import { fetchStudents, fetchAttendance, saveAttendanceApi } from '@/lib/api-client';
 
 export interface AttendanceMatrixRow {
     student: Student;
@@ -23,9 +21,6 @@ export interface UseAdminAttendanceResult {
     saveBatchAttendance: (changes: Record<string, { studentId: string; date: string; status: boolean; reason?: string | null }>) => Promise<boolean>;
 }
 
-const ALL_GRADES = ['4.믿음', '5.소망', '6.사랑'];
-const ALL_CLASSES = [1, 2, 3, 4];
-
 export function useAdminAttendance(grade: string, classNum: number): UseAdminAttendanceResult {
     const [students, setStudents] = useState<Student[]>([]);
     const [rows, setRows] = useState<AttendanceMatrixRow[]>([]);
@@ -38,65 +33,25 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
         setLoading(true);
         setError(null);
         try {
-            const auth = getAuth();
-            if (!auth.currentUser) {
-                await signInAnonymously(auth);
-            }
+            // grade='all', classNum=0 은 API가 전 학년/전체 반으로 처리
+            const [fetchedStudents, records] = await Promise.all([
+                fetchStudents(grade, classNum),
+                fetchAttendance(grade, classNum),
+            ]);
 
-            const gradeList = grade === 'all' ? ALL_GRADES : [grade];
-            const classList = classNum === 0 ? ALL_CLASSES : [classNum];
-
-            const combinations: { grade: string; classNum: number }[] = [];
-            for (const g of gradeList) {
-                for (const c of classList) {
-                    combinations.push({ grade: g, classNum: c });
-                }
-            }
-
-            const studentsResults = [];
-            const historyResults = [];
-            
-            // 24개 병렬 요청이 한 번에 스파이크를 발생시켜 Too many connections 에러가 나므로 조합별 순차(Sequential) 실행으로 커넥션 슬롯을 방어
-            for (const comb of combinations) {
-                const [sRes, hRes] = await Promise.all([
-                    getStudents(dataConnect, { grade: comb.grade, classNum: comb.classNum }),
-                    getAttendanceHistory(dataConnect, { grade: comb.grade, classNum: comb.classNum })
-                ]);
-                studentsResults.push(sRes);
-                historyResults.push(hRes);
-            }
-
-            const fetchedStudents: Student[] = studentsResults.flatMap((res) =>
-                res.data.students.map((s) => ({
-                    id: s.id,
-                    grade: s.grade,
-                    classNum: s.classNum,
-                    number: s.number,
-                    name: s.name,
-                    gender: s.gender as any,
-                    status: s.status as any,
-                }))
-            );
-
-            // studentId -> date -> status 매핑 및 전체 날짜 수집
             const attendanceMap: Record<string, Record<string, { status: boolean; reason?: string | null }>> = {};
             const dateSet = new Set<string>();
 
-            for (const historyRes of historyResults) {
-                for (const record of historyRes.data.attendanceRecords) {
-                    const sid = record.student.id;
-                    if (!attendanceMap[sid]) attendanceMap[sid] = {};
-                    attendanceMap[sid][record.date] = {
-                        status: record.status,
-                        reason: record.reason,
-                    };
-                    dateSet.add(record.date);
-                }
+            for (const record of records) {
+                if (!attendanceMap[record.studentId]) attendanceMap[record.studentId] = {};
+                attendanceMap[record.studentId][record.date] = {
+                    status: record.status,
+                    reason: record.reason,
+                };
+                dateSet.add(record.date);
             }
 
-            const sortedDates = Array.from(dateSet).sort();
-
-            const matrixRows: AttendanceMatrixRow[] = fetchedStudents
+            const matrixRows: AttendanceMatrixRow[] = [...fetchedStudents]
                 .sort((a, b) => {
                     if (a.grade !== b.grade) return a.grade.localeCompare(b.grade);
                     if (a.classNum !== b.classNum) return a.classNum - b.classNum;
@@ -111,7 +66,7 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
 
             setStudents(fetchedStudents);
             setRows(matrixRows);
-            setAllDates(sortedDates);
+            setAllDates(Array.from(dateSet).sort());
         } catch (err: any) {
             const msg = err?.message || String(err);
             setError(`데이터 로드 실패: ${msg}`);
@@ -127,46 +82,39 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
         setLoading(true);
         setError(null);
         try {
-            const auth = getAuth();
-            if (!auth.currentUser) {
-                await signInAnonymously(auth);
+            const entries = Object.entries(changes);
+            const payload = entries
+                .map(([, v]) => v)
+                .filter((v) => v.studentId && v.date && v.status !== undefined && v.status !== null)
+                .map((v) => ({
+                    id: `${v.studentId}_${v.date}`,
+                    studentId: v.studentId,
+                    date: v.date,
+                    status: v.status,
+                    reason: v.reason || undefined,
+                }));
+
+            if (payload.length > 0) {
+                await saveAttendanceApi(payload);
             }
 
-            const entries = Object.entries(changes);
-            
-            // 24개 스파이크 방어를 위해 순차 실행
-            for (const [key, val] of entries) {
-                const { studentId, date, status, reason } = val;
-                // status가 undefined/null인 경우 DB 삭제를 지원하지 않으므로 skip
-                if (!studentId || !date || status === undefined || status === null) continue;
-                
-                await upsertAttendance(dataConnect, {
-                    id: `${studentId}_${date}`,
-                    studentId,
-                    date,
-                    status,
-                    reason: reason || null
-                });
-            }
-            
-            // UI를 강제 새로고침 전 즉시 반영 (Optimistic Update)
-            setRows(prevRows => prevRows.map(row => {
+            // 전체 갱신 전 즉시 반영 (Optimistic Update)
+            setRows((prevRows) => prevRows.map((row) => {
                 let rowChanged = false;
                 const newRecords = { ...row.records };
-                for (const [, val] of entries) {
-                    if (val.studentId === row.student.id && val.status !== undefined && val.status !== null) {
-                        newRecords[val.date] = { status: val.status, reason: val.reason || null };
+                for (const v of payload) {
+                    if (v.studentId === row.student.id) {
+                        newRecords[v.date] = { status: v.status, reason: v.reason || null };
                         rowChanged = true;
                     }
                 }
                 if (!rowChanged) return row;
-                
-                const presentCount = Object.values(newRecords).filter(v => v.status).length;
-                const absentCount = Object.values(newRecords).filter(v => !v.status).length;
+
+                const presentCount = Object.values(newRecords).filter((v) => v.status).length;
+                const absentCount = Object.values(newRecords).filter((v) => !v.status).length;
                 return { ...row, records: newRecords, presentCount, absentCount };
             }));
 
-            // 백그라운드에서 전체 갱신 (비동기 처리)
             fetchData();
             return true;
         } catch (err: any) {

@@ -18,9 +18,8 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Link from 'next/link';
-import { getAuth, signInAnonymously } from 'firebase/auth';
-import { dataConnect } from '@/lib/firebase';
-import { getAttendanceHistory } from '@/lib/generated';
+import { fetchAttendance } from '@/lib/api-client';
+import { AttendanceRecord } from '@/types';
 import { useGrades } from '@/hooks/useGrades';
 import TypographyAtom from '@/components/atoms/TypographyAtom';
 import GradeClassSelect from '@/components/molecules/GradeClassSelect';
@@ -29,7 +28,7 @@ export default function HistoryPage() {
     const { grades, classes, loading: gradesLoading } = useGrades();
     const [selectedGrade, setSelectedGrade] = useState('');
     const [selectedClass, setSelectedClass] = useState(1);
-    const [records, setRecords] = useState<any[]>([]);
+    const [records, setRecords] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -46,16 +45,7 @@ export default function HistoryPage() {
             setLoading(true);
             setError(null);
             try {
-                const auth = getAuth();
-                if (!auth.currentUser) {
-                    await signInAnonymously(auth);
-                }
-
-                const res = await getAttendanceHistory(dataConnect, { 
-                    grade: selectedGrade, 
-                    classNum: selectedClass 
-                });
-                setRecords(res.data.attendanceRecords);
+                setRecords(await fetchAttendance(selectedGrade, selectedClass));
             } catch (err) {
                 console.error(err);
                 setError('기록을 불러오는 중 오류가 발생했습니다.');
@@ -121,7 +111,7 @@ export default function HistoryPage() {
                                 records.map((record) => (
                                     <TableRow key={record.id} hover>
                                         <TableCell>{record.date}</TableCell>
-                                        <TableCell>{record.student.name}</TableCell>
+                                        <TableCell>{record.studentName}</TableCell>
                                         <TableCell>
                                             <Typography 
                                                 variant="body2" 

@@ -1,13 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getAuth, signInAnonymously } from 'firebase/auth';
-import { dataConnect } from '@/lib/firebase';
-import { getStudents, upsertStudent } from '@/lib/generated';
 import { Student } from '@/types';
-
-const ALL_GRADES = ['4.믿음', '5.소망', '6.사랑'];
-const ALL_CLASSES = [1, 2, 3, 4];
+import { fetchStudents, saveStudentApi } from '@/lib/api-client';
 
 export interface UseStudentManagementResult {
     students: Student[];
@@ -27,21 +22,10 @@ export function useStudentManagement(grade?: string, classNum?: number): UseStud
         setLoading(true);
         setError(null);
         try {
-            const auth = getAuth();
-            if (!auth.currentUser) await signInAnonymously(auth);
-
-            let allStudents: Student[];
-
-            if (grade && classNum) {
-                const res = await getStudents(dataConnect, { grade, classNum });
-                allStudents = res.data.students.map(mapStudent);
-            } else {
-                const combos = ALL_GRADES.flatMap((g) => ALL_CLASSES.map((c) => ({ g, c })));
-                const results = await Promise.all(
-                    combos.map(({ g, c }) => getStudents(dataConnect, { grade: g, classNum: c }))
-                );
-                allStudents = results.flatMap((r) => r.data.students.map(mapStudent));
-            }
+            const allStudents =
+                grade && classNum
+                    ? await fetchStudents(grade, classNum)
+                    : await fetchStudents('all', 0);
 
             setStudents(
                 allStudents.sort((a, b) => {
@@ -63,61 +47,18 @@ export function useStudentManagement(grade?: string, classNum?: number): UseStud
         fetchData();
     }, [fetchData]);
 
-    const ensureAuth = async () => {
-        const auth = getAuth();
-        if (!auth.currentUser) await signInAnonymously(auth);
-    };
-
     const saveStudent = async (data: Omit<Student, 'id'> & { id?: string }) => {
-        await ensureAuth();
         const id =
             data.id ||
             `${data.grade}_${data.classNum}_${data.number}_${data.name.replace(/\s+/g, '')}`;
-        await upsertStudent(dataConnect, {
-            id,
-            grade: data.grade,
-            classNum: data.classNum,
-            number: data.number,
-            name: data.name,
-            gender: data.gender,
-            status: data.status,
-        });
+        await saveStudentApi({ ...data, id });
         await fetchData();
     };
 
     const deactivateStudent = async (student: Student) => {
-        await ensureAuth();
-        await upsertStudent(dataConnect, {
-            id: student.id,
-            grade: student.grade,
-            classNum: student.classNum,
-            number: student.number,
-            name: student.name,
-            gender: student.gender,
-            status: '전학',
-        });
+        await saveStudentApi({ ...student, status: '전학' });
         await fetchData();
     };
 
     return { students, loading, error, refresh: fetchData, saveStudent, deactivateStudent };
-}
-
-function mapStudent(s: {
-    id: string;
-    grade: string;
-    classNum: number;
-    number: number;
-    name: string;
-    gender: string;
-    status: string;
-}): Student {
-    return {
-        id: s.id,
-        grade: s.grade,
-        classNum: s.classNum,
-        number: s.number,
-        name: s.name,
-        gender: s.gender as Student['gender'],
-        status: s.status as Student['status'],
-    };
 }
