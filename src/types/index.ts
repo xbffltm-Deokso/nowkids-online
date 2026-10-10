@@ -22,3 +22,22 @@ export interface AttendanceRecord {
     reason?: string;
     timestamp: string; // ISO String
 }
+
+// 최근 52주 출석 그룹 — A 80% 이상, B 60%, C 40%, D 20% 이상, E 20% 미만
+export type AttendanceGroup = 'A' | 'B' | 'C' | 'D' | 'E';
+
+export interface AttendanceSummary {
+    studentId: string;
+    present: number;
+    weeks: number; // 분모: 출석부를 쓴 주 중 이 학생의 첫 기록 이후 주
+    rate: number | null; // 0~100, 소수 첫째 자리
+    group: AttendanceGroup | null;
+    absentStreak: number; // 최근 주부터 연속으로 출석하지 않은 주 수
+}
+
+export interface AttendanceSummaryResult {
+    from: string;
+    to: string;
+    countedWeeks: number;
+    summaries: AttendanceSummary[];
+}

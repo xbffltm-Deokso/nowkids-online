@@ -23,6 +23,8 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TypographyAtom from '@/components/atoms/TypographyAtom';
 import { useAdminAttendance } from '@/hooks/useAdminAttendance';
+import AttendanceGroupSection from '@/components/organisms/AttendanceGroupSection';
+import { isActiveStatus } from '@/utils/studentStatus';
 import {
     formatDateShort,
     getQuarter,
@@ -68,13 +70,13 @@ export default function AttendanceStatsPanel() {
     const groupKeys = useMemo(() => {
         const keys = new Set<string>();
         for (const { student } of rows) {
-            if (student.status === '전학') continue;
+            if (!isActiveStatus(student.status)) continue;
             keys.add(byClass ? `${student.grade}|${student.classNum}` : student.grade);
         }
         return Array.from(keys).sort((a, b) => a.localeCompare(b, 'ko-KR', { numeric: true }));
     }, [rows, byClass]);
 
-    const enrolled = useMemo(() => rows.filter((r) => r.student.status !== '전학').length, [rows]);
+    const enrolled = useMemo(() => rows.filter((r) => isActiveStatus(r.student.status)).length, [rows]);
 
     const weeks = useMemo((): WeekStat[] => {
         const range = period === 'year'
@@ -294,6 +296,8 @@ export default function AttendanceStatsPanel() {
             <TypographyAtom variant="caption" color="text.secondary">
                 칸의 숫자는 출석 인원/기록 인원이며, 출석률은 그 주에 기록이 있는 학생 중 출석한 비율입니다. 재적은 현재 재학·휴학 학생 수입니다.
             </TypographyAtom>
+
+            <AttendanceGroupSection rows={rows} />
         </Stack>
     );
 }

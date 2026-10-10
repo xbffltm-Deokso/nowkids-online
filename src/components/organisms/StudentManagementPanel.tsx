@@ -18,6 +18,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import Alert from '@mui/material/Alert';
+import AttendanceGroupChip from '@/components/atoms/AttendanceGroupChip';
+import { useAttendanceGroups } from '@/hooks/useAttendanceGroups';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
@@ -58,6 +60,8 @@ export default function StudentManagementPanel() {
     const allStudentsHook = useStudentManagement();
     // 학년별 탭: 선택한 학년/반만 로드
     const classStudentsHook = useStudentManagement(filterGrade, filterClass);
+
+    const groups = useAttendanceGroups();
 
     const isAllTab = tabIndex === 0;
     const { students: rawStudents, loading, error, refresh, saveStudent, deactivateStudent } =
@@ -167,13 +171,14 @@ export default function StudentManagementPanel() {
                                 <TableCell>이름</TableCell>
                                 <TableCell align="center">성별</TableCell>
                                 <TableCell align="center">상태</TableCell>
+                                <TableCell align="center">출석 그룹(52주)</TableCell>
                                 <TableCell align="center">관리</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {students.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                                    <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                                         학생 데이터가 없습니다.
                                     </TableCell>
                                 </TableRow>
@@ -199,6 +204,9 @@ export default function StudentManagementPanel() {
                                                 size="small"
                                                 color={STATUS_COLOR[student.status] ?? 'default'}
                                             />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <AttendanceGroupChip summary={groups.byStudent.get(student.id)} />
                                         </TableCell>
                                         <TableCell align="center">
                                             <Tooltip title="수정">

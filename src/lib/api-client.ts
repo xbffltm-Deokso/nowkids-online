@@ -1,4 +1,4 @@
-import { Student, AttendanceRecord } from '@/types';
+import { Student, AttendanceRecord, AttendanceSummaryResult } from '@/types';
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
     const res = await fetch(url, init);
@@ -57,4 +57,9 @@ export function saveAttendanceApi(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(records),
     });
+}
+
+// 학생별 최근 52주 출석률·출석 그룹·연속 결석
+export function fetchAttendanceGroups(): Promise<AttendanceSummaryResult> {
+    return request('/api/attendance-groups');
 }
