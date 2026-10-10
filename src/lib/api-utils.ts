@@ -17,21 +17,31 @@ export function withErrorHandling<A extends unknown[]>(
     handler: (req: NextRequest, ...args: A) => Promise<NextResponse>
 ) {
     return async (req: NextRequest, ...args: A): Promise<NextResponse> => {
-        try {
-            return await handler(req, ...args);
-        } catch (err) {
-            if (err instanceof ApiError) {
-                return NextResponse.json({ error: err.message }, { status: err.status });
+        // 관리자 API(개인정보 포함 가능)는 응답을 캐시하지 않고, 오류 로그에 쿼리 값이 남지 않게 함
+        const isAdminApi = req.nextUrl.pathname.startsWith('/api/admin/');
+        const res = await (async () => {
+            try {
+                return await handler(req, ...args);
+            } catch (err) {
+                if (err instanceof ApiError) {
+                    return NextResponse.json({ error: err.message }, { status: err.status });
+                }
+                // Postgres 외래키 위반 (존재하지 않는 학생에게 출석 기록 등) — Drizzle은 원래 오류를 cause에 담음
+                const pgCode = (err as { code?: string; cause?: { code?: string } })?.cause?.code
+                    ?? (err as { code?: string })?.code;
+                if (pgCode === '23503') {
+                    return NextResponse.json({ error: '존재하지 않는 학생입니다.' }, { status: 400 });
+                }
+                // Drizzle 오류 메시지에는 쿼리 파라미터(값)가 포함되므로 관리자 API는 종류만 기록
+                console.error(
+                    `[${req.method} ${req.nextUrl.pathname}]`,
+                    isAdminApi ? { name: (err as Error)?.name, pgCode } : err
+                );
+                return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
             }
-            // Postgres 외래키 위반 (존재하지 않는 학생에게 출석 기록 등) — Drizzle은 원래 오류를 cause에 담음
-            const pgCode = (err as { code?: string; cause?: { code?: string } })?.cause?.code
-                ?? (err as { code?: string })?.code;
-            if (pgCode === '23503') {
-                return NextResponse.json({ error: '존재하지 않는 학생입니다.' }, { status: 400 });
-            }
-            console.error(`[${req.method} ${req.nextUrl.pathname}]`, err);
-            return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
-        }
+        })();
+        if (isAdminApi) res.headers.set('Cache-Control', 'no-store');
+        return res;
     };
 }
 

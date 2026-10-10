@@ -1,44 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// 출석 기록 삭제(DELETE /api/attendance)만 관리자 비밀번호(APP_PASSWORD)로 보호
-// 페이지는 모두 공개 — 관리자 화면에서 삭제가 포함된 저장을 할 때 비밀번호를 입력받아 헤더로 보냄
+// 관리자 전용 API의 1차 관문 — 비밀번호 헤더가 없으면 바로 거절
+// 실제 비밀번호 확인과 시도 횟수 제한은 각 Route Handler의 requireAdmin(src/lib/admin-auth.ts)에서 함
+// (여기서 틀린 비밀번호를 거절하면 실패 횟수가 기록되지 않아 대입 차단이 무력해지므로 헤더 유무만 확인)
 const ADMIN_PASSWORD_HEADER = 'x-admin-password';
 
-// APP_PASSWORD 환경변수를 설정하기 전까지만 쓰는 임시 비밀번호의 SHA-256 해시 (평문은 저장소에 두지 않음)
-// APP_PASSWORD를 설정하면 이 임시 비밀번호는 더 이상 통하지 않음
-const TEMP_PASSWORD_HASH = 'c167f5386fc80de8286cffdb7ba8bc3d8b54fba104f2b6538457f61f43d12106';
-
-async function sha256(value: string): Promise<string> {
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
-    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+function isAdminRequest(req: NextRequest): boolean {
+    const { pathname } = req.nextUrl;
+    if (pathname.startsWith('/api/admin/')) return true;
+    return pathname === '/api/attendance' && req.method === 'DELETE';
 }
 
-export async function middleware(req: NextRequest) {
-    if (req.method !== 'DELETE') {
-        return NextResponse.next();
+export function middleware(req: NextRequest) {
+    if (isAdminRequest(req) && !req.headers.get(ADMIN_PASSWORD_HEADER)) {
+        return NextResponse.json({ error: '관리자 비밀번호가 필요합니다.' }, { status: 401 });
     }
-
-    const password = process.env.APP_PASSWORD;
-    const expected = password ? await sha256(password) : TEMP_PASSWORD_HASH;
-    // 헤더에는 ASCII만 들어가므로 클라이언트가 encodeURIComponent로 보냄
-    let given: string | null = null;
-    try {
-        const raw = req.headers.get(ADMIN_PASSWORD_HEADER);
-        given = raw === null ? null : decodeURIComponent(raw);
-    } catch {
-        given = '';
-    }
-
-    if (given && (await sha256(given)) === expected) {
-        return NextResponse.next();
-    }
-
-    return NextResponse.json(
-        { error: given ? '관리자 비밀번호가 올바르지 않습니다.' : '관리자 비밀번호가 필요합니다.' },
-        { status: 401 }
-    );
+    return NextResponse.next();
 }
 
 export const config = {
-    matcher: ['/api/attendance'],
+    matcher: ['/api/attendance', '/api/admin/:path*'],
 };

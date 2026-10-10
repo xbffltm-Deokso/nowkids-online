@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, date, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, date, timestamp, index, serial } from 'drizzle-orm/pg-core';
 
 export const students = pgTable(
     'students',
@@ -27,6 +27,17 @@ export const attendanceRecords = pgTable(
         timestamp: timestamp('timestamp', { withTimezone: true }).notNull().defaultNow(),
     },
     (t) => [index('attendance_student_date_idx').on(t.studentId, t.date)]
+);
+
+// 관리자 비밀번호 실패 기록 — 비밀번호 대입(brute force) 차단용
+export const adminAuthFailures = pgTable(
+    'admin_auth_failures',
+    {
+        id: serial('id').primaryKey(),
+        ip: text('ip').notNull(),
+        createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [index('admin_auth_failures_created_idx').on(t.createdAt)]
 );
 
 export type StudentRow = typeof students.$inferSelect;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { and, asc, desc, eq, gte, or, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { attendanceRecords, students } from '@/lib/schema';
+import { requireAdmin } from '@/lib/admin-auth';
 import {
     asList,
     asObject,
@@ -101,6 +102,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
 // DELETE /api/attendance — [{ studentId, date }] 배열로 받은 기록 삭제 ("기록 없음"으로 되돌리기)
 export const DELETE = withErrorHandling(async (req: NextRequest) => {
+    await requireAdmin(req);
     const list = asList(await readJson(req));
 
     if (list.length === 0) {
