@@ -172,9 +172,23 @@
             return ch2chNames.indexOf(n) < 0;
         });
 
+        // 이 분기에서 NowKids 기록이 있는 주 — 분기 전체를 대조하지만 기록이 있는 주만 바뀜
+        var datesWithData = dates.filter(function (date) {
+            return data.records.some(function (r) {
+                return r.date === date;
+            });
+        });
+        var dataWeeksText = datesWithData.length
+            ? datesWithData.map(function (date) {
+                return Number(date.slice(5, 7)) + '/' + Number(date.slice(8, 10));
+            }).join(', ') + ' (' + datesWithData.length + '/' + dates.length + '주)'
+            : '없음';
+
         showPanel(
             doc,
-            subname + ' · ' + dates[0] + ' ~ ' + dates[dates.length - 1] + '<br><br>' +
+            subname + ' · ' + dates[0] + ' ~ ' + dates[dates.length - 1] + '<br>' +
+                '<b>NowKids 기록이 있는 주</b>: ' + dataWeeksText + '<br>' +
+                '<span style="color:#666;font-size:12px">다른 분기는 ch2ch에서 분기를 바꾼 뒤 다시 눌러 주세요.</span><br><br>' +
                 '<span style="background:#c8e6c9;padding:0 4px">출석으로 체크</span> ' + checked + '칸<br>' +
                 '<span style="background:#ffcdd2;padding:0 4px">결석으로 해제</span> ' + unchecked + '칸<br><br>' +
                 '<b>ch2ch에만 있는 학생</b> (반영 안 됨)<br>' + nameList(onlyCh2ch) + '<br><br>' +
