@@ -28,7 +28,7 @@ export function useAttendance(grade: string, classNum: number, date: string) {
         try {
             const [studentsData, attendanceData] = await Promise.all([
                 fetchStudents(grade, classNum),
-                fetchAttendance(grade, classNum, date),
+                fetchAttendance(grade, classNum, { date }),
             ]);
 
             const sorted = [...studentsData].sort((a, b) =>

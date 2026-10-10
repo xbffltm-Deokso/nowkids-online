@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { attendanceRecords, students } from '@/lib/schema';
 
-// GET /api/attendance?grade=&classNum=&date=
-// date를 생략하면 해당 학년/반의 전체 출석 이력을 반환
+// GET /api/attendance?grade=&classNum=&date=&from=
+// date를 생략하면 해당 학년/반의 전체 출석 이력을 반환, from을 주면 그 날짜 이후만 반환
 export async function GET(req: NextRequest) {
     const params = req.nextUrl.searchParams;
     const grade = params.get('grade');
     const classNum = params.get('classNum');
     const date = params.get('date');
+    const from = params.get('from');
 
     if (!grade) {
         return NextResponse.json({ error: 'grade는 필수입니다.' }, { status: 400 });
@@ -29,6 +30,9 @@ export async function GET(req: NextRequest) {
     }
     if (date) {
         conditions.push(eq(attendanceRecords.date, date));
+    }
+    if (from) {
+        conditions.push(gte(attendanceRecords.date, from));
     }
 
     const rows = await db

@@ -26,14 +26,15 @@ export function deleteStudentApi(id: string): Promise<Student> {
     return request(`/api/students/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
-// date를 생략하면 전체 이력
+// date: 특정 날짜만, from: 해당 날짜 이후만, 둘 다 생략하면 전체 이력
 export function fetchAttendance(
     grade: string,
     classNum: number,
-    date?: string
+    options: { date?: string; from?: string } = {}
 ): Promise<AttendanceRecord[]> {
     const params = new URLSearchParams({ grade, classNum: String(classNum) });
-    if (date) params.set('date', date);
+    if (options.date) params.set('date', options.date);
+    if (options.from) params.set('from', options.from);
     return request(`/api/attendance?${params}`);
 }
 

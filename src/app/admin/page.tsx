@@ -22,7 +22,6 @@ import {
     getSundayOfCurrentWeek,
     getQuarter,
     getQuarterRange,
-    isInDateRange,
     getSundaysInRange,
 } from '@/utils/dateUtils';
 

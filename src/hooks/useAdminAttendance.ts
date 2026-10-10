@@ -28,10 +28,13 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchData = useCallback(async () => {
+    // isSilent: 저장 후 갱신처럼 화면(필터·스크롤)을 유지한 채 백그라운드로 다시 불러올 때
+    const fetchData = useCallback(async (isSilent = false) => {
         if (!grade) return;
-        setLoading(true);
-        setError(null);
+        if (!isSilent) {
+            setLoading(true);
+            setError(null);
+        }
         try {
             // grade='all', classNum=0 은 API가 전 학년/전체 반으로 처리
             const [fetchedStudents, records] = await Promise.all([
@@ -72,14 +75,14 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
             setError(`데이터 로드 실패: ${msg}`);
             console.error('[useAdminAttendance]', err);
         } finally {
-            setLoading(false);
+            if (!isSilent) setLoading(false);
         }
     }, [grade, classNum]);
 
     const saveBatchAttendance = useCallback(async (
         changes: Record<string, { studentId: string; date: string; status: boolean; reason?: string | null }>
     ) => {
-        setLoading(true);
+        // 저장 중 표시는 AttendanceMatrix의 isSaving이 담당 — 여기서 loading을 켜면 매트릭스가 언마운트되어 필터가 초기화됨
         setError(null);
         try {
             const entries = Object.entries(changes);
@@ -115,15 +118,13 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
                 return { ...row, records: newRecords, presentCount, absentCount };
             }));
 
-            fetchData();
+            fetchData(true);
             return true;
         } catch (err: any) {
             const msg = err?.message || String(err);
             setError(`일괄 저장 실패: ${msg}`);
             console.error('[saveBatchAttendance]', err);
             return false;
-        } finally {
-            setLoading(false);
         }
     }, [fetchData]);
 
@@ -131,5 +132,9 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
         fetchData();
     }, [fetchData]);
 
-    return { students, rows, allDates, loading, error, refresh: fetchData, saveBatchAttendance };
+    const refresh = useCallback(() => {
+        fetchData();
+    }, [fetchData]);
+
+    return { students, rows, allDates, loading, error, refresh, saveBatchAttendance };
 }

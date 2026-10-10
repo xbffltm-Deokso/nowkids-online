@@ -21,13 +21,19 @@ import Link from 'next/link';
 import { fetchAttendance } from '@/lib/api-client';
 import { AttendanceRecord } from '@/types';
 import { useGrades } from '@/hooks/useGrades';
+import { addWeeks, getSundayOfCurrentWeek } from '@/utils/dateUtils';
 import TypographyAtom from '@/components/atoms/TypographyAtom';
+import ButtonAtom from '@/components/atoms/ButtonAtom';
 import GradeClassSelect from '@/components/molecules/GradeClassSelect';
+
+// 한 번에 불러오는 기간(주). "이전 기록 더 보기"마다 이만큼 늘어남
+const WEEKS_PER_PAGE = 12;
 
 export default function HistoryPage() {
     const { grades, classes, loading: gradesLoading } = useGrades();
     const [selectedGrade, setSelectedGrade] = useState('');
     const [selectedClass, setSelectedClass] = useState(1);
+    const [weeks, setWeeks] = useState(WEEKS_PER_PAGE);
     const [records, setRecords] = useState<AttendanceRecord[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -38,6 +44,8 @@ export default function HistoryPage() {
         }
     }, [grades, selectedGrade]);
 
+    const from = addWeeks(getSundayOfCurrentWeek(), -(weeks - 1));
+
     useEffect(() => {
         if (!selectedGrade) return;
 
@@ -45,7 +53,7 @@ export default function HistoryPage() {
             setLoading(true);
             setError(null);
             try {
-                setRecords(await fetchAttendance(selectedGrade, selectedClass));
+                setRecords(await fetchAttendance(selectedGrade, selectedClass, { from }));
             } catch (err) {
                 console.error(err);
                 setError('기록을 불러오는 중 오류가 발생했습니다.');
@@ -55,7 +63,7 @@ export default function HistoryPage() {
         };
 
         fetchHistory();
-    }, [selectedGrade, selectedClass]);
+    }, [selectedGrade, selectedClass, from]);
 
     if (gradesLoading) {
         return (
@@ -84,8 +92,14 @@ export default function HistoryPage() {
                     classes={classes}
                     selectedGrade={selectedGrade}
                     selectedClass={selectedClass}
-                    onGradeChange={setSelectedGrade}
-                    onClassChange={setSelectedClass}
+                    onGradeChange={(g) => {
+                        setSelectedGrade(g);
+                        setWeeks(WEEKS_PER_PAGE); // 학년/반이 바뀌면 다시 최근 기간부터
+                    }}
+                    onClassChange={(c) => {
+                        setSelectedClass(c);
+                        setWeeks(WEEKS_PER_PAGE);
+                    }}
                 />
             </Box>
 
@@ -136,6 +150,20 @@ export default function HistoryPage() {
                         </TableBody>
                     </Table>
                 </TableContainer>
+            )}
+
+            {!loading && (
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                    <TypographyAtom variant="body2" color="text.secondary">
+                        {from} 이후 기록
+                    </TypographyAtom>
+                    <ButtonAtom
+                        label="이전 기록 더 보기"
+                        variant="outlined"
+                        size="small"
+                        onClick={() => setWeeks((w) => w + WEEKS_PER_PAGE)}
+                    />
+                </Box>
             )}
         </Container>
     );

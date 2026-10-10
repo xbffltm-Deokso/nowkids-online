@@ -22,23 +22,3 @@ export interface AttendanceRecord {
     reason?: string;
     timestamp: string; // ISO String
 }
-
-export interface AttendanceSummary {
-    present: number;
-    late: number;
-    absent: number;
-    earlyLeave: number;
-    etc: number;
-    total: number;
-}
-
-export interface ApiResponse<T> {
-    success: boolean;
-    data?: T;
-    error?: string;
-}
-
-export interface GradeClassOption {
-    grade: string;
-    classNum: number;
-}

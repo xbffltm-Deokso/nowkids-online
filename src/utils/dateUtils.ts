@@ -30,10 +30,6 @@ export function getQuarterRange(year: number, quarter: 1 | 2 | 3 | 4): { start: 
     };
 }
 
-export function isInDateRange(dateStr: string, start: string, end: string): boolean {
-    return dateStr >= start && dateStr <= end;
-}
-
 export function getSundaysInRange(start: string, end: string): string[] {
     const sundays: string[] = [];
     const d = new Date(start + 'T00:00:00');

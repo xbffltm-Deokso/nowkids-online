@@ -6,11 +6,6 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Stack from '@mui/material/Stack';
 
-export interface GradeClassOption {
-    grade: number;
-    classNum: number;
-}
-
 interface GradeClassSelectProps {
     grades: string[];
     classes: number[];
