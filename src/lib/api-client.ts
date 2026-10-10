@@ -1,4 +1,4 @@
-import { Student, AttendanceRecord, AttendanceSummaryResult } from '@/types';
+import { Student, AttendanceRecord, AttendanceSummaryResult, PrivateImportResult, AdminLog } from '@/types';
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
     const res = await fetch(url, init);
@@ -62,4 +62,24 @@ export function saveAttendanceApi(
 // 학생별 최근 52주 출석률·출석 그룹·연속 결석
 export function fetchAttendanceGroups(): Promise<AttendanceSummaryResult> {
     return request('/api/attendance-groups');
+}
+
+// 관리자 비밀번호 헤더 (헤더에는 ASCII만 들어가므로 인코딩)
+function adminHeaders(adminPassword: string): Record<string, string> {
+    return { 'X-Admin-Password': encodeURIComponent(adminPassword) };
+}
+
+// 교적 엑셀의 개인정보 가져오기
+export function importPrivateData(file: File, adminPassword: string): Promise<PrivateImportResult> {
+    const form = new FormData();
+    form.append('file', file);
+    return request('/api/admin/private-import', {
+        method: 'POST',
+        headers: adminHeaders(adminPassword),
+        body: form,
+    });
+}
+
+export function fetchAdminLogs(): Promise<AdminLog[]> {
+    return request('/api/admin-logs');
 }

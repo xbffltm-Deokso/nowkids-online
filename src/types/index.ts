@@ -41,3 +41,22 @@ export interface AttendanceSummaryResult {
     countedWeeks: number;
     summaries: AttendanceSummary[];
 }
+
+// 교적 엑셀 가져오기 결과 (개인정보 값 없이 이름·인원만)
+export interface PrivateImportResult {
+    totalRows: number;
+    updated: number;
+    looseMatches: string[];
+    unmatched: string[];
+    ambiguous: string[];
+    duplicates: string[];
+    studentsWithoutData: string[];
+}
+
+export interface AdminLog {
+    id: number;
+    action: 'import' | 'export' | 'promote';
+    summary: string;
+    count: number;
+    createdAt: string;
+}

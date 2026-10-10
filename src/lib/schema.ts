@@ -40,5 +40,37 @@ export const adminAuthFailures = pgTable(
     (t) => [index('admin_auth_failures_created_idx').on(t.createdAt)]
 );
 
+// 학생 개인정보 — students와 분리해 둔 별도 테이블
+// 관리자 비밀번호가 필요한 /api/admin/* 라우트 외에는 절대 조회하지 않음 (화면·일반 API에 노출 금지)
+export const studentPrivate = pgTable('student_private', {
+    studentId: text('student_id')
+        .primaryKey()
+        .references(() => students.id, { onDelete: 'cascade' }),
+    teacher: text('teacher'),
+    birthDate: date('birth_date'),
+    phone: text('phone'),
+    motherName: text('mother_name'),
+    motherPhone: text('mother_phone'),
+    fatherName: text('father_name'),
+    fatherPhone: text('father_phone'),
+    address: text('address'),
+    note: text('note'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// 관리자 작업 기록 (개인정보 가져오기·추출, 진급 처리) — 개인정보 값은 남기지 않고 요약만 저장
+export const adminLogs = pgTable(
+    'admin_logs',
+    {
+        id: serial('id').primaryKey(),
+        action: text('action').notNull(), // 'import' | 'export' | 'promote'
+        summary: text('summary').notNull(),
+        count: integer('count').notNull(),
+        ip: text('ip').notNull(),
+        createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    },
+    (t) => [index('admin_logs_action_created_idx').on(t.action, t.createdAt)]
+);
+
 export type StudentRow = typeof students.$inferSelect;
 export type AttendanceRow = typeof attendanceRecords.$inferSelect;

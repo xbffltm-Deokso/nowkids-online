@@ -18,6 +18,7 @@ import AttendanceMatrix from '@/components/organisms/AttendanceMatrix';
 import StudentManagementPanel from '@/components/organisms/StudentManagementPanel';
 import Ch2chSyncPanel from '@/components/organisms/Ch2chSyncPanel';
 import AttendanceStatsPanel from '@/components/organisms/AttendanceStatsPanel';
+import AdminDataPanel from '@/components/organisms/AdminDataPanel';
 import { useGrades } from '@/hooks/useGrades';
 import { useAdminAttendance, AttendanceMatrixRow } from '@/hooks/useAdminAttendance';
 import {
@@ -30,7 +31,7 @@ import {
 export default function AdminPage() {
     const { grades, classes } = useGrades();
 
-    const [topTab, setTopTab] = useState(0); // 0=출석 관리, 1=출석 통계, 2=학생 관리, 3=ch2ch 연동
+    const [topTab, setTopTab] = useState(0); // 0=출석 관리, 1=출석 통계, 2=학생 관리, 3=ch2ch 연동, 4=진급·개인정보
 
     const [selectedGrade, setSelectedGrade] = useState('all');
     const [selectedClass, setSelectedClass] = useState(0); // 0 = 전체 반
@@ -90,6 +91,7 @@ export default function AdminPage() {
                 <Tab label="출석 통계" />
                 <Tab label="학생 관리" />
                 <Tab label="ch2ch 연동" />
+                <Tab label="진급·개인정보" />
             </Tabs>
 
             {topTab === 0 && (
@@ -140,6 +142,8 @@ export default function AdminPage() {
             {topTab === 2 && <StudentManagementPanel />}
 
             {topTab === 3 && <Ch2chSyncPanel />}
+
+            {topTab === 4 && <AdminDataPanel />}
         </Container>
     );
 }

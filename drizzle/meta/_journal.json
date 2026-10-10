@@ -15,6 +15,13 @@
       "when": 1791599682342,
       "tag": "0001_yummy_stark_industries",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791599795321,
+      "tag": "0002_normal_sprite",
+      "breakpoints": true
     }
   ]
 }
