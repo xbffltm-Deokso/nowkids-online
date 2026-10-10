@@ -139,14 +139,55 @@
             recordMap[r.name + '|' + r.date] = r.status;
         });
 
-        var ch2chNames = [];
+        // ch2ch 학생 → NowKids 이름 연결
+        // 1) 이름이 같으면 연결 2) 남은 학생은 끝의 동명이인 구분 영문 대문자(강세원B 등)를 떼고 비교해
+        //    후보가 서로 하나씩일 때만 연결, 여럿이면 누군지 확실하지 않으므로 연결하지 않음
+        var ch2chNames = rows.map(function (tr) {
+            return cellText(tr.cells[nameIndex]);
+        });
+        var matchedName = {}; // ch2ch 이름 → NowKids 이름
+        var usedNowkids = {};
+        ch2chNames.forEach(function (name) {
+            if (data.students.indexOf(name) >= 0) {
+                matchedName[name] = name;
+                usedNowkids[name] = true;
+            }
+        });
+        var baseName = function (n) {
+            return n.replace(/\s*[A-Z]+$/, '');
+        };
+        var looseMatches = [];
+        var ambiguous = [];
+        var unmatchedCh2ch = ch2chNames.filter(function (n) {
+            return !(n in matchedName);
+        });
+        var freeNowkids = data.students.filter(function (n) {
+            return !usedNowkids[n];
+        });
+        unmatchedCh2ch.forEach(function (name) {
+            var base = baseName(name);
+            var candidates = freeNowkids.filter(function (n) {
+                return baseName(n) === base;
+            });
+            var rivals = unmatchedCh2ch.filter(function (n) {
+                return baseName(n) === base;
+            });
+            if (candidates.length === 1 && rivals.length === 1) {
+                matchedName[name] = candidates[0];
+                usedNowkids[candidates[0]] = true;
+                looseMatches.push(name + ' ↔ ' + candidates[0]);
+            } else if (candidates.length > 0) {
+                ambiguous.push(name);
+            }
+        });
+
         var checked = 0;
         var unchecked = 0;
         var $ = win.jQuery;
 
-        rows.forEach(function (tr) {
-            var name = cellText(tr.cells[nameIndex]);
-            ch2chNames.push(name);
+        rows.forEach(function (tr, rowIndex) {
+            var name = matchedName[ch2chNames[rowIndex]];
+            if (!name) return;
             var personId = tr.getAttribute('person_id');
             tr.querySelectorAll('input[type=checkbox][name^="week_"]').forEach(function (cb) {
                 var parts = cb.name.split('_');
@@ -166,10 +207,10 @@
         });
 
         var onlyCh2ch = ch2chNames.filter(function (n) {
-            return data.students.indexOf(n) < 0;
+            return !(n in matchedName) && ambiguous.indexOf(n) < 0;
         });
         var onlyNowkids = data.students.filter(function (n) {
-            return ch2chNames.indexOf(n) < 0;
+            return !usedNowkids[n];
         });
 
         // 이 분기에서 NowKids 기록이 있는 주 — 분기 전체를 대조하지만 기록이 있는 주만 바뀜
@@ -191,6 +232,12 @@
                 '<span style="color:#666;font-size:12px">다른 분기는 ch2ch에서 분기를 바꾼 뒤 다시 눌러 주세요.</span><br><br>' +
                 '<span style="background:#c8e6c9;padding:0 4px">출석으로 체크</span> ' + checked + '칸<br>' +
                 '<span style="background:#ffcdd2;padding:0 4px">결석으로 해제</span> ' + unchecked + '칸<br><br>' +
+                (looseMatches.length
+                    ? '<b>이름 표기가 달라 연결한 학생</b> (ch2ch ↔ NowKids)<br>' + nameList(looseMatches) + '<br><br>'
+                    : '') +
+                (ambiguous.length
+                    ? '<b style="color:#d32f2f">누군지 확실하지 않아 건너뛴 학생</b><br>' + nameList(ambiguous) + '<br><br>'
+                    : '') +
                 '<b>ch2ch에만 있는 학생</b> (반영 안 됨)<br>' + nameList(onlyCh2ch) + '<br><br>' +
                 '<b>NowKids에만 있는 학생</b> (반영 안 됨)<br>' + nameList(onlyNowkids) + '<br><br>' +
                 (checked + unchecked > 0
