@@ -31,13 +31,16 @@ export function useAttendance(grade: string, classNum: number, date: string) {
                 fetchAttendance(grade, classNum, { date }),
             ]);
 
-            const sorted = [...studentsData].sort((a, b) =>
-                a.name.localeCompare(b.name, 'ko-KR')
-            );
+            // 전학 처리된 학생은 출석 대상에서 제외 (기록은 DB에 그대로 보존)
+            const sorted = studentsData
+                .filter((s) => s.status !== '전학')
+                .sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
             setStudents(sorted);
 
+            const activeIds = new Set(sorted.map((s) => s.id));
             const attendanceMap: Record<string, AttendanceRecord> = {};
             for (const record of attendanceData) {
+                if (!activeIds.has(record.studentId)) continue;
                 attendanceMap[record.studentId] = {
                     ...record,
                     reason: record.reason ?? '',
