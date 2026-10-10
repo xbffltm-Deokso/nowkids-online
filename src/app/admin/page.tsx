@@ -16,6 +16,7 @@ import GradeClassSelect from '@/components/molecules/GradeClassSelect';
 import ViewModeSelector, { ViewMode } from '@/components/molecules/ViewModeSelector';
 import AttendanceMatrix from '@/components/organisms/AttendanceMatrix';
 import StudentManagementPanel from '@/components/organisms/StudentManagementPanel';
+import Ch2chSyncPanel from '@/components/organisms/Ch2chSyncPanel';
 import { useGrades } from '@/hooks/useGrades';
 import { useAdminAttendance, AttendanceMatrixRow } from '@/hooks/useAdminAttendance';
 import {
@@ -28,7 +29,7 @@ import {
 export default function AdminPage() {
     const { grades, classes } = useGrades();
 
-    const [topTab, setTopTab] = useState(0); // 0=출석 관리, 1=학생 관리
+    const [topTab, setTopTab] = useState(0); // 0=출석 관리, 1=학생 관리, 2=ch2ch 연동
 
     const [selectedGrade, setSelectedGrade] = useState('all');
     const [selectedClass, setSelectedClass] = useState(0); // 0 = 전체 반
@@ -86,6 +87,7 @@ export default function AdminPage() {
             <Tabs value={topTab} onChange={(_, v) => setTopTab(v)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
                 <Tab label="출석 관리" />
                 <Tab label="학생 관리" />
+                <Tab label="ch2ch 연동" />
             </Tabs>
 
             {topTab === 0 && (
@@ -132,6 +134,8 @@ export default function AdminPage() {
             )}
 
             {topTab === 1 && <StudentManagementPanel />}
+
+            {topTab === 2 && <Ch2chSyncPanel />}
         </Container>
     );
 }
