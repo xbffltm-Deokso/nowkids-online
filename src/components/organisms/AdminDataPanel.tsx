@@ -12,10 +12,14 @@ import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import DownloadIcon from '@mui/icons-material/Download';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import TypographyAtom from '@/components/atoms/TypographyAtom';
 import PasswordDialog from '@/components/molecules/PasswordDialog';
 import { useAdminPassword } from '@/hooks/useAdminPassword';
-import { fetchAdminLogs, importPrivateData } from '@/lib/api-client';
+import { downloadPromotionDb, fetchAdminLogs, importPrivateData } from '@/lib/api-client';
+import { useGrades } from '@/hooks/useGrades';
 import { AdminLog, PrivateImportResult } from '@/types';
 
 const ACTION_LABEL: Record<AdminLog['action'], string> = {
@@ -43,6 +47,10 @@ export default function AdminDataPanel() {
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState<PrivateImportResult | null>(null);
 
+    const { grades } = useGrades();
+    const [exportGrade, setExportGrade] = useState(grades[grades.length - 1] ?? 'all');
+    const [exporting, setExporting] = useState(false);
+
     const loadLogs = useCallback(() => {
         fetchAdminLogs().then(setLogs).catch(() => setLogs([]));
     }, []);
@@ -65,6 +73,22 @@ export default function AdminDataPanel() {
                 }
             },
             (err) => setError(`가져오기 실패: ${err.message}`)
+        );
+    };
+
+    const handleExport = () => {
+        setError(null);
+        withPassword(
+            async (password) => {
+                setExporting(true);
+                try {
+                    await downloadPromotionDb(exportGrade, password);
+                    loadLogs();
+                } finally {
+                    setExporting(false);
+                }
+            },
+            (err) => setError(`추출 실패: ${err.message}`)
         );
     };
 
@@ -129,6 +153,33 @@ export default function AdminDataPanel() {
                         <NameList title="엑셀에 없어 개인정보가 없는 학생" names={importResult.studentsWithoutData} severity="warning" />
                     </>
                 )}
+            </Paper>
+
+            {/* 2. 진급자 DB 추출 */}
+            <Paper sx={{ p: 3 }}>
+                <TypographyAtom variant="h6" fontWeight="bold" gutterBottom>
+                    진급자 DB 추출
+                </TypographyAtom>
+                <TypographyAtom variant="body2" color="text.secondary" gutterBottom>
+                    고른 학년 학생의 개인정보와 최근 52주 출석률·출석그룹(A~E)을 엑셀로 내려받습니다. 중등부로 올려 보낼 때는
+                    6학년을 고르세요. 개인정보가 담긴 파일이니 필요한 사람에게만 전달하고 사용 후 삭제해 주세요.
+                </TypographyAtom>
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 2 }}>
+                    <Select size="small" value={exportGrade} onChange={(e) => setExportGrade(e.target.value)}>
+                        {grades.map((g) => (
+                            <MenuItem key={g} value={g}>{g}</MenuItem>
+                        ))}
+                        <MenuItem value="all">전체 학년</MenuItem>
+                    </Select>
+                    <Button
+                        variant="contained"
+                        onClick={handleExport}
+                        disabled={exporting}
+                        startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
+                    >
+                        엑셀로 추출
+                    </Button>
+                </Stack>
             </Paper>
 
             {/* 작업 기록 */}

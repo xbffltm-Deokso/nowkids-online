@@ -83,3 +83,24 @@ export function importPrivateData(file: File, adminPassword: string): Promise<Pr
 export function fetchAdminLogs(): Promise<AdminLog[]> {
     return request('/api/admin-logs');
 }
+
+// 진급자 DB 엑셀 내려받기 — 파일을 받아 브라우저 다운로드로 저장
+export async function downloadPromotionDb(grade: string, adminPassword: string): Promise<void> {
+    const res = await fetch('/api/admin/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...adminHeaders(adminPassword) },
+        body: JSON.stringify({ grade }),
+    });
+    if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || `요청 실패 (${res.status})`);
+    }
+    const disposition = res.headers.get('Content-Disposition') ?? '';
+    const fileName = decodeURIComponent(/filename\*=UTF-8''([^;]+)/.exec(disposition)?.[1] ?? '진급자DB.xlsx');
+    const url = URL.createObjectURL(await res.blob());
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+}
