@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, asc, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, or, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { attendanceRecords, students } from '@/lib/schema';
 
@@ -91,6 +91,37 @@ export async function POST(req: NextRequest) {
                 timestamp: sql`now()`,
             },
         })
+        .returning();
+
+    return NextResponse.json(rows);
+}
+
+// DELETE /api/attendance — [{ studentId, date }] 배열로 받은 기록 삭제 ("기록 없음"으로 되돌리기)
+export async function DELETE(req: NextRequest) {
+    const body = await req.json();
+    const list = Array.isArray(body) ? body : [body];
+
+    const targets = [];
+    for (const item of list) {
+        const { studentId, date } = item ?? {};
+        if (!studentId || !date) {
+            return NextResponse.json(
+                { error: 'studentId와 date는 필수입니다.' },
+                { status: 400 }
+            );
+        }
+        targets.push(
+            and(eq(attendanceRecords.studentId, String(studentId)), eq(attendanceRecords.date, String(date)))
+        );
+    }
+
+    if (targets.length === 0) {
+        return NextResponse.json([]);
+    }
+
+    const rows = await db
+        .delete(attendanceRecords)
+        .where(or(...targets))
         .returning();
 
     return NextResponse.json(rows);

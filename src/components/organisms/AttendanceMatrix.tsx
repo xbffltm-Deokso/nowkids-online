@@ -24,22 +24,17 @@ import SearchIcon from '@mui/icons-material/Search';
 import SaveIcon from '@mui/icons-material/Save';
 import CloseIcon from '@mui/icons-material/Close';
 import CircularProgress from '@mui/material/CircularProgress';
-import { AttendanceMatrixRow } from '@/hooks/useAdminAttendance';
+import { AttendanceMatrixRow, AttendanceChange } from '@/hooks/useAdminAttendance';
 import { formatDateShort } from '@/utils/dateUtils';
 
-export interface PendingChange {
-    studentId: string;
-    date: string;
-    status: boolean | undefined;
-    reason?: string | null;
-}
+export type PendingChange = AttendanceChange;
 
 interface AttendanceMatrixProps {
     rows: AttendanceMatrixRow[];
     dates: string[];
     grade: string;
     classNum: number;
-    onSaveBatch?: (changes: Record<string, { studentId: string; date: string; status: boolean; reason?: string | null }>) => Promise<boolean>;
+    onSaveBatch?: (changes: Record<string, AttendanceChange>) => Promise<boolean>;
 }
 
 function StatusCell({ 
@@ -281,13 +276,8 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
     const handleSaveBatch = async () => {
         if (!onSaveBatch || pendingCount === 0) return;
         setIsSaving(true);
-        const savePayload: Record<string, { studentId: string; date: string; status: boolean; reason?: string | null }> = {};
-        for (const [key, val] of Object.entries(pendingChanges)) {
-            if (val.status !== undefined) {
-                savePayload[key] = { studentId: val.studentId, date: val.date, status: val.status, reason: val.reason };
-            }
-        }
-        const success = await onSaveBatch(savePayload);
+        // status가 undefined인 변경은 "기록 없음"으로 되돌린 것 — 저장 시 기존 기록 삭제
+        const success = await onSaveBatch(pendingChanges);
         if (success) {
             setPendingChanges({});
         }

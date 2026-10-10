@@ -34,6 +34,16 @@ export function fetchAttendance(
     return request(`/api/attendance?${params}`);
 }
 
+export function deleteAttendanceApi(
+    targets: Array<Pick<AttendanceRecord, 'studentId' | 'date'>>
+): Promise<AttendanceRecord[]> {
+    return request('/api/attendance', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(targets),
+    });
+}
+
 export function saveAttendanceApi(
     records: Array<Pick<AttendanceRecord, 'id' | 'studentId' | 'date' | 'status' | 'reason'>>
 ): Promise<AttendanceRecord[]> {

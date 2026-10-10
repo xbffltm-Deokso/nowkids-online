@@ -2,13 +2,21 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Student } from '@/types';
-import { fetchStudents, fetchAttendance, saveAttendanceApi } from '@/lib/api-client';
+import { fetchStudents, fetchAttendance, saveAttendanceApi, deleteAttendanceApi } from '@/lib/api-client';
 
 export interface AttendanceMatrixRow {
     student: Student;
     records: Record<string, { status: boolean; reason?: string | null }>; // date -> { status, reason }
     presentCount: number;
     absentCount: number;
+}
+
+// status가 undefined면 "기록 없음" — 기존 기록을 삭제
+export interface AttendanceChange {
+    studentId: string;
+    date: string;
+    status: boolean | undefined;
+    reason?: string | null;
 }
 
 export interface UseAdminAttendanceResult {
@@ -18,7 +26,7 @@ export interface UseAdminAttendanceResult {
     loading: boolean;
     error: string | null;
     refresh: () => void;
-    saveBatchAttendance: (changes: Record<string, { studentId: string; date: string; status: boolean; reason?: string | null }>) => Promise<boolean>;
+    saveBatchAttendance: (changes: Record<string, AttendanceChange>) => Promise<boolean>;
 }
 
 export function useAdminAttendance(grade: string, classNum: number): UseAdminAttendanceResult {
@@ -79,27 +87,30 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
         }
     }, [grade, classNum]);
 
-    const saveBatchAttendance = useCallback(async (
-        changes: Record<string, { studentId: string; date: string; status: boolean; reason?: string | null }>
-    ) => {
+    const saveBatchAttendance = useCallback(async (changes: Record<string, AttendanceChange>) => {
         // 저장 중 표시는 AttendanceMatrix의 isSaving이 담당 — 여기서 loading을 켜면 매트릭스가 언마운트되어 필터가 초기화됨
         setError(null);
         try {
-            const entries = Object.entries(changes);
-            const payload = entries
-                .map(([, v]) => v)
-                .filter((v) => v.studentId && v.date && v.status !== undefined && v.status !== null)
-                .map((v) => ({
-                    id: `${v.studentId}_${v.date}`,
-                    studentId: v.studentId,
-                    date: v.date,
-                    status: v.status,
-                    reason: v.reason || undefined,
-                }));
+            const values = Object.values(changes).filter((v) => v.studentId && v.date);
+            const payload = values.flatMap((v) =>
+                v.status === undefined
+                    ? []
+                    : [{
+                        id: `${v.studentId}_${v.date}`,
+                        studentId: v.studentId,
+                        date: v.date,
+                        status: v.status,
+                        reason: v.reason || undefined,
+                    }]
+            );
+            const removals = values
+                .filter((v) => v.status === undefined)
+                .map((v) => ({ studentId: v.studentId, date: v.date }));
 
-            if (payload.length > 0) {
-                await saveAttendanceApi(payload);
-            }
+            await Promise.all([
+                payload.length > 0 ? saveAttendanceApi(payload) : null,
+                removals.length > 0 ? deleteAttendanceApi(removals) : null,
+            ]);
 
             // 전체 갱신 전 즉시 반영 (Optimistic Update)
             setRows((prevRows) => prevRows.map((row) => {
@@ -108,6 +119,12 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
                 for (const v of payload) {
                     if (v.studentId === row.student.id) {
                         newRecords[v.date] = { status: v.status, reason: v.reason || null };
+                        rowChanged = true;
+                    }
+                }
+                for (const v of removals) {
+                    if (v.studentId === row.student.id) {
+                        delete newRecords[v.date];
                         rowChanged = true;
                     }
                 }
