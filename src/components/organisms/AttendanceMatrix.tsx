@@ -276,6 +276,26 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
         });
     };
 
+    // 날짜별 출석 인원 합계 (현재 필터 기준, 저장 전 변경 반영)
+    const dateTotals = useMemo(() => {
+        return dates.map((d) => {
+            let present = 0;
+            let absent = 0;
+            for (const row of filteredAndSortedRows) {
+                const pending = pendingChanges[`${row.student.id}_${d}`];
+                const status = pending ? pending.status : row.records[d]?.status;
+                if (status === true) present++;
+                else if (status === false) absent++;
+            }
+            return { date: d, present, absent };
+        });
+    }, [dates, filteredAndSortedRows, pendingChanges]);
+    const totalPresent = dateTotals.reduce((sum, t) => sum + t.present, 0);
+    const totalAbsent = dateTotals.reduce((sum, t) => sum + t.absent, 0);
+    const totalRate = totalPresent + totalAbsent > 0
+        ? Math.round((totalPresent / (totalPresent + totalAbsent)) * 100)
+        : null;
+
     // status가 undefined인 변경은 "기록 없음"으로 되돌린 것 — 저장 시 기존 기록 삭제(관리자 비밀번호 필요)
     const hasRemovals = Object.values(pendingChanges).some((c) => c.status === undefined);
 
@@ -539,6 +559,36 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                                     </TableRow>
                                 );
                             })
+                        )}
+                        {filteredAndSortedRows.length > 0 && (
+                            <TableRow sx={{ '& td': { position: 'sticky', bottom: 0, bgcolor: 'grey.100', borderTop: 2, borderColor: 'divider', fontWeight: 'bold' } }}>
+                                {showClass && <TableCell sx={{ ...stickyCell, left: 0, bgcolor: 'grey.100', zIndex: 3 }} />}
+                                <TableCell sx={{ ...stickyCell, left: nameLeft, bgcolor: 'grey.100', zIndex: 3 }}>
+                                    출석 인원
+                                    <Typography variant="caption" display="block" color="text.secondary">
+                                        총 {filteredAndSortedRows.length}명
+                                    </Typography>
+                                </TableCell>
+                                {dateTotals.map((t) => (
+                                    <TableCell key={t.date} align="center" sx={{ px: 1 }}>
+                                        {t.present + t.absent === 0 ? (
+                                            <Typography variant="body2" color="text.disabled">-</Typography>
+                                        ) : (
+                                            <>
+                                                <Typography variant="body2" fontWeight="bold" color="success.main">
+                                                    {t.present}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    /{t.present + t.absent}
+                                                </Typography>
+                                            </>
+                                        )}
+                                    </TableCell>
+                                ))}
+                                <TableCell align="center" sx={{ color: 'success.main' }}>{totalPresent}</TableCell>
+                                <TableCell align="center" sx={{ color: 'error.main' }}>{totalAbsent}</TableCell>
+                                <TableCell align="center">{totalRate !== null ? `${totalRate}%` : '-'}</TableCell>
+                            </TableRow>
                         )}
                     </TableBody>
                 </Table>
