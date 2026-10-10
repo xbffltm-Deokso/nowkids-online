@@ -2,13 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { and, asc, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { students } from '@/lib/schema';
+import {
+    asObject,
+    badRequest,
+    readJson,
+    requireInt,
+    requireOneOf,
+    requireString,
+    withErrorHandling,
+} from '@/lib/api-utils';
 
-export async function GET(req: NextRequest) {
+const GENDERS = ['M', 'F'] as const;
+const STATUSES = ['재학', '휴학', '전학'] as const;
+
+export const GET = withErrorHandling(async (req: NextRequest) => {
     const grade = req.nextUrl.searchParams.get('grade');
     const classNum = req.nextUrl.searchParams.get('classNum');
 
     if (!grade) {
-        return NextResponse.json({ error: 'grade는 필수입니다.' }, { status: 400 });
+        badRequest('grade는 필수입니다.');
     }
 
     // grade=all 이면 전 학년, classNum=0 이면 전체 반
@@ -17,11 +29,7 @@ export async function GET(req: NextRequest) {
         conditions.push(eq(students.grade, grade));
     }
     if (classNum !== null && classNum !== '0') {
-        const parsed = Number(classNum);
-        if (Number.isNaN(parsed)) {
-            return NextResponse.json({ error: 'classNum이 올바르지 않습니다.' }, { status: 400 });
-        }
-        conditions.push(eq(students.classNum, parsed));
+        conditions.push(eq(students.classNum, requireInt(classNum, 'classNum', 1)));
     }
 
     const rows = await db
@@ -31,24 +39,19 @@ export async function GET(req: NextRequest) {
         .orderBy(asc(students.grade), asc(students.classNum), asc(students.number));
 
     return NextResponse.json(rows);
-}
+});
 
-export async function POST(req: NextRequest) {
-    const body = await req.json();
-    const { id, grade, classNum, number, name, gender, status } = body ?? {};
-
-    if (!id || !grade || !name) {
-        return NextResponse.json({ error: 'id, grade, name은 필수입니다.' }, { status: 400 });
-    }
+export const POST = withErrorHandling(async (req: NextRequest) => {
+    const body = asObject(await readJson(req));
 
     const values = {
-        id: String(id),
-        grade: String(grade),
-        classNum: Number(classNum),
-        number: Number(number),
-        name: String(name),
-        gender: String(gender ?? 'M'),
-        status: String(status ?? '재학'),
+        id: requireString(body.id, 'id'),
+        grade: requireString(body.grade, 'grade'),
+        classNum: requireInt(body.classNum, 'classNum', 1),
+        number: requireInt(body.number ?? 0, 'number'),
+        name: requireString(body.name, 'name').trim(),
+        gender: requireOneOf(body.gender ?? 'M', 'gender', GENDERS),
+        status: requireOneOf(body.status ?? '재학', 'status', STATUSES),
     };
 
     const [row] = await db
@@ -58,4 +61,4 @@ export async function POST(req: NextRequest) {
         .returning();
 
     return NextResponse.json(row);
-}
+});
