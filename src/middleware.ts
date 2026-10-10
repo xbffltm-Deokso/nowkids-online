@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// 사이트 전체를 비밀번호 하나(APP_PASSWORD)로 보호
-// 최초 접속 시 ?key=비밀번호 로 들어오면 해시를 쿠키에 저장하고, 이후 요청은 쿠키로 확인
+// 관리자 영역만 비밀번호 하나(APP_PASSWORD)로 보호 — 교사 출석 화면과 출석 기록 조회는 공개
+// 최초 접속 시 /admin?key=비밀번호 로 들어오면 해시를 쿠키에 저장하고, 이후 요청은 쿠키로 확인
 const AUTH_COOKIE = 'nowkids_auth';
 const KEY_PARAM = 'key';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 180; // 180일
@@ -26,7 +26,18 @@ function unauthorized(req: NextRequest, message: string) {
     );
 }
 
+// 보호 대상: /admin 페이지, 관리자 화면에서만 쓰는 출석 기록 삭제 API
+function requiresAuth(req: NextRequest): boolean {
+    const { pathname } = req.nextUrl;
+    if (pathname === '/admin' || pathname.startsWith('/admin/')) return true;
+    return pathname === '/api/attendance' && req.method === 'DELETE';
+}
+
 export async function middleware(req: NextRequest) {
+    if (!requiresAuth(req)) {
+        return NextResponse.next();
+    }
+
     const password = process.env.APP_PASSWORD;
     const expected = password ? await sha256(password) : TEMP_PASSWORD_HASH;
     const key = req.nextUrl.searchParams.get(KEY_PARAM);
@@ -53,9 +64,9 @@ export async function middleware(req: NextRequest) {
         return NextResponse.next();
     }
 
-    return unauthorized(req, '공유받은 접속 주소(비밀번호 포함)로 다시 접속해 주세요.');
+    return unauthorized(req, '관리자 페이지입니다. 공유받은 관리자 주소(비밀번호 포함)로 접속해 주세요.');
 }
 
 export const config = {
-    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+    matcher: ['/admin', '/admin/:path*', '/api/attendance'],
 };
