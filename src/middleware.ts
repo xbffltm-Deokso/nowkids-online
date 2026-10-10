@@ -6,6 +6,10 @@ const AUTH_COOKIE = 'nowkids_auth';
 const KEY_PARAM = 'key';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 180; // 180일
 
+// APP_PASSWORD 환경변수를 설정하기 전까지만 쓰는 임시 비밀번호의 SHA-256 해시 (평문은 저장소에 두지 않음)
+// APP_PASSWORD를 설정하면 이 임시 비밀번호와 그걸로 발급된 쿠키는 더 이상 통하지 않음
+const TEMP_PASSWORD_HASH = 'c167f5386fc80de8286cffdb7ba8bc3d8b54fba104f2b6538457f61f43d12106';
+
 async function sha256(value: string): Promise<string> {
     const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
     return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -24,12 +28,7 @@ function unauthorized(req: NextRequest, message: string) {
 
 export async function middleware(req: NextRequest) {
     const password = process.env.APP_PASSWORD;
-    if (!password) {
-        // 비밀번호가 설정되지 않은 배포는 열어두지 않음
-        return unauthorized(req, '서버에 APP_PASSWORD가 설정되지 않았습니다.');
-    }
-
-    const expected = await sha256(password);
+    const expected = password ? await sha256(password) : TEMP_PASSWORD_HASH;
     const key = req.nextUrl.searchParams.get(KEY_PARAM);
 
     if (key !== null) {
