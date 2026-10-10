@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Student, AttendanceRecord, AttendanceStatus } from '@/types';
 import {
     fetchStudents,
@@ -14,8 +14,11 @@ export function useAttendance(grade: string, classNum: number, date: string) {
     const [attendance, setAttendance] = useState<Record<string, AttendanceRecord>>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    // 학년/반을 빠르게 바꿀 때 늦게 도착한 이전 응답이 화면을 덮어쓰지 않도록 최신 요청만 반영
+    const latestRequestRef = useRef(0);
 
     const fetchData = useCallback(async (isSilent = false) => {
+        const requestId = ++latestRequestRef.current;
         if (!grade) {
             if (!isSilent) setLoading(false);
             return;
@@ -29,6 +32,7 @@ export function useAttendance(grade: string, classNum: number, date: string) {
                 fetchStudents(grade, classNum),
                 fetchAttendance(grade, classNum, { date }),
             ]);
+            if (requestId !== latestRequestRef.current) return;
 
             // 전학 처리된 학생은 출석 대상에서 제외 (기록은 DB에 그대로 보존)
             const sorted = studentsData
@@ -63,11 +67,12 @@ export function useAttendance(grade: string, classNum: number, date: string) {
 
             setAttendance(attendanceMap);
         } catch (err: any) {
+            if (requestId !== latestRequestRef.current) return;
             const msg = err?.message || String(err);
             if (!isSilent) setError(`데이터 로드 실패: ${msg}`);
             console.error('[useAttendance]', err);
         } finally {
-            if (!isSilent) setLoading(false);
+            if (requestId === latestRequestRef.current) setLoading(false);
         }
     }, [grade, classNum, date]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Student } from '@/types';
 import { fetchStudents, fetchAttendance, saveAttendanceApi, deleteAttendanceApi } from '@/lib/api-client';
 
@@ -35,10 +35,13 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
     const [allDates, setAllDates] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // 학년/반을 빠르게 바꿀 때 늦게 도착한 이전 응답이 화면을 덮어쓰지 않도록 최신 요청만 반영
+    const latestRequestRef = useRef(0);
 
     // isSilent: 저장 후 갱신처럼 화면(필터·스크롤)을 유지한 채 백그라운드로 다시 불러올 때
     const fetchData = useCallback(async (isSilent = false) => {
         if (!grade) return;
+        const requestId = ++latestRequestRef.current;
         if (!isSilent) {
             setLoading(true);
             setError(null);
@@ -49,6 +52,7 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
                 fetchStudents(grade, classNum),
                 fetchAttendance(grade, classNum),
             ]);
+            if (requestId !== latestRequestRef.current) return;
 
             const attendanceMap: Record<string, Record<string, { status: boolean; reason?: string | null }>> = {};
             const dateSet = new Set<string>();
@@ -79,11 +83,12 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
             setRows(matrixRows);
             setAllDates(Array.from(dateSet).sort());
         } catch (err: any) {
+            if (requestId !== latestRequestRef.current) return;
             const msg = err?.message || String(err);
             setError(`데이터 로드 실패: ${msg}`);
             console.error('[useAdminAttendance]', err);
         } finally {
-            if (!isSilent) setLoading(false);
+            if (requestId === latestRequestRef.current) setLoading(false);
         }
     }, [grade, classNum]);
 

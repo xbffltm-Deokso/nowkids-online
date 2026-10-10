@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Student } from '@/types';
 import { fetchStudents, saveStudentApi } from '@/lib/api-client';
 
@@ -17,8 +17,11 @@ export function useStudentManagement(grade?: string, classNum?: number): UseStud
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // 늦게 도착한 이전 응답이 화면을 덮어쓰지 않도록 최신 요청만 반영
+    const latestRequestRef = useRef(0);
 
     const fetchData = useCallback(async () => {
+        const requestId = ++latestRequestRef.current;
         setLoading(true);
         setError(null);
         try {
@@ -26,6 +29,7 @@ export function useStudentManagement(grade?: string, classNum?: number): UseStud
                 grade && classNum
                     ? await fetchStudents(grade, classNum)
                     : await fetchStudents('all', 0);
+            if (requestId !== latestRequestRef.current) return;
 
             setStudents(
                 allStudents.sort((a, b) => {
@@ -35,11 +39,12 @@ export function useStudentManagement(grade?: string, classNum?: number): UseStud
                 })
             );
         } catch (err: any) {
+            if (requestId !== latestRequestRef.current) return;
             const msg = err?.message || String(err);
             setError(`데이터 로드 실패: ${msg}`);
             console.error('[useStudentManagement]', err);
         } finally {
-            setLoading(false);
+            if (requestId === latestRequestRef.current) setLoading(false);
         }
     }, [grade, classNum]);
 

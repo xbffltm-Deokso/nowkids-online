@@ -48,21 +48,28 @@ export default function HistoryPage() {
 
     useEffect(() => {
         if (!selectedGrade) return;
+        // 조건이 바뀌면 이전 요청의 늦은 응답은 무시
+        let ignore = false;
 
         const fetchHistory = async () => {
             setLoading(true);
             setError(null);
             try {
-                setRecords(await fetchAttendance(selectedGrade, selectedClass, { from }));
+                const data = await fetchAttendance(selectedGrade, selectedClass, { from });
+                if (!ignore) setRecords(data);
             } catch (err) {
+                if (ignore) return;
                 console.error(err);
                 setError('기록을 불러오는 중 오류가 발생했습니다.');
             } finally {
-                setLoading(false);
+                if (!ignore) setLoading(false);
             }
         };
 
         fetchHistory();
+        return () => {
+            ignore = true;
+        };
     }, [selectedGrade, selectedClass, from]);
 
     if (gradesLoading) {
