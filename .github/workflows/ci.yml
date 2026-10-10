@@ -1,0 +1,20 @@
+name: CI
+
+# 배포는 Vercel이 담당 — 여기서는 lint/type-check만 확인
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run type-check
