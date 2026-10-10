@@ -48,9 +48,8 @@ export function useStudentManagement(grade?: string, classNum?: number): UseStud
     }, [fetchData]);
 
     const saveStudent = async (data: Omit<Student, 'id'> & { id?: string }) => {
-        const id =
-            data.id ||
-            `${data.grade}_${data.classNum}_${data.number}_${data.name.replace(/\s+/g, '')}`;
+        // 새 학생 ID는 UUID — 이름·번호로 만들면 동명이인이 기존 학생을 덮어씀
+        const id = data.id || crypto.randomUUID();
         await saveStudentApi({ ...data, id });
         await fetchData();
     };

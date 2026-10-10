@@ -123,7 +123,7 @@ export function useAttendance(grade: string, classNum: number, date: string) {
     const addStudent = async (name: string) => {
         const trimmed = name.trim();
         if (!trimmed) return;
-        const newId = `student_${Date.now()}`;
+        const newId = crypto.randomUUID();
 
         const newStudent: Student = {
             id: newId,
