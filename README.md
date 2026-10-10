@@ -18,6 +18,9 @@ npm install
 
 `.env.example`을 `.env.local`로 복사한 뒤 `DATABASE_URL`(Neon 연결 문자열)을 입력합니다.
 
+- `DATABASE_URL`: Neon 연결 문자열
+- `APP_PASSWORD`: 사이트 접속 비밀번호. 최초 접속 시 `/?key=비밀번호`로 들어오면 180일간 쿠키로 인증이 유지됩니다. 설정하지 않으면 모든 접근이 차단됩니다.
+
 ### 개발 서버 실행
 
 ```bash
@@ -72,7 +75,7 @@ sheet_to_neon.mjs             # 구 Google Sheet 출석 데이터 → Neon 이�
 
 ## 🌐 배포 (Vercel)
 
-Vercel 프로젝트 환경변수에 `DATABASE_URL`을 등록하고 배포합니다.
+Vercel 프로젝트 환경변수에 `DATABASE_URL`, `APP_PASSWORD`를 등록하고 배포합니다.
 스키마 변경 시 `npx drizzle-kit generate` 후 `npx drizzle-kit migrate`로 DB에 반영합니다.
 
 ## 📝 Scripts
