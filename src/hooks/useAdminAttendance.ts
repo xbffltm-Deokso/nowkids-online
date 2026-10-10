@@ -26,7 +26,7 @@ export interface UseAdminAttendanceResult {
     loading: boolean;
     error: string | null;
     refresh: () => void;
-    saveBatchAttendance: (changes: Record<string, AttendanceChange>) => Promise<boolean>;
+    saveBatchAttendance: (changes: Record<string, AttendanceChange>, adminPassword?: string) => Promise<boolean>;
 }
 
 export function useAdminAttendance(grade: string, classNum: number): UseAdminAttendanceResult {
@@ -92,7 +92,8 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
         }
     }, [grade, classNum]);
 
-    const saveBatchAttendance = useCallback(async (changes: Record<string, AttendanceChange>) => {
+    // adminPassword: 삭제("기록 없음")가 포함된 경우에만 필요
+    const saveBatchAttendance = useCallback(async (changes: Record<string, AttendanceChange>, adminPassword?: string) => {
         // 저장 중 표시는 AttendanceMatrix의 isSaving이 담당 — 여기서 loading을 켜면 매트릭스가 언마운트되어 필터가 초기화됨
         setError(null);
         try {
@@ -112,10 +113,13 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
                 .filter((v) => v.status === undefined)
                 .map((v) => ({ studentId: v.studentId, date: v.date }));
 
-            await Promise.all([
-                payload.length > 0 ? saveAttendanceApi(payload) : null,
-                removals.length > 0 ? deleteAttendanceApi(removals) : null,
-            ]);
+            // 삭제(비밀번호 확인)를 먼저 — 비밀번호가 틀리면 아무것도 저장하지 않고 중단
+            if (removals.length > 0) {
+                await deleteAttendanceApi(removals, adminPassword ?? '');
+            }
+            if (payload.length > 0) {
+                await saveAttendanceApi(payload);
+            }
 
             // 전체 갱신 전 즉시 반영 (Optimistic Update)
             setRows((prevRows) => prevRows.map((row) => {

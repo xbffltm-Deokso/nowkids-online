@@ -34,12 +34,17 @@ export function fetchAttendance(
     return request(`/api/attendance?${params}`);
 }
 
+// 출석 기록 삭제는 관리자 비밀번호 필요 (middleware에서 확인)
 export function deleteAttendanceApi(
-    targets: Array<Pick<AttendanceRecord, 'studentId' | 'date'>>
+    targets: Array<Pick<AttendanceRecord, 'studentId' | 'date'>>,
+    adminPassword: string
 ): Promise<AttendanceRecord[]> {
     return request('/api/attendance', {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Password': encodeURIComponent(adminPassword),
+        },
         body: JSON.stringify(targets),
     });
 }

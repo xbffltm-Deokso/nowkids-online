@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// 관리자 영역만 비밀번호 하나(APP_PASSWORD)로 보호 — 교사 출석 화면과 출석 기록 조회는 공개
-// 최초 접속 시 /admin?key=비밀번호 로 들어오면 해시를 쿠키에 저장하고, 이후 요청은 쿠키로 확인
-const AUTH_COOKIE = 'nowkids_auth';
-const KEY_PARAM = 'key';
-const COOKIE_MAX_AGE = 60 * 60 * 24 * 180; // 180일
+// 출석 기록 삭제(DELETE /api/attendance)만 관리자 비밀번호(APP_PASSWORD)로 보호
+// 페이지는 모두 공개 — 관리자 화면에서 삭제가 포함된 저장을 할 때 비밀번호를 입력받아 헤더로 보냄
+const ADMIN_PASSWORD_HEADER = 'x-admin-password';
 
 // APP_PASSWORD 환경변수를 설정하기 전까지만 쓰는 임시 비밀번호의 SHA-256 해시 (평문은 저장소에 두지 않음)
-// APP_PASSWORD를 설정하면 이 임시 비밀번호와 그걸로 발급된 쿠키는 더 이상 통하지 않음
+// APP_PASSWORD를 설정하면 이 임시 비밀번호는 더 이상 통하지 않음
 const TEMP_PASSWORD_HASH = 'c167f5386fc80de8286cffdb7ba8bc3d8b54fba104f2b6538457f61f43d12106';
 
 async function sha256(value: string): Promise<string> {
@@ -15,58 +13,32 @@ async function sha256(value: string): Promise<string> {
     return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-function unauthorized(req: NextRequest, message: string) {
-    if (req.nextUrl.pathname.startsWith('/api/')) {
-        return NextResponse.json({ error: message }, { status: 401 });
-    }
-    return new NextResponse(
-        `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>접근 제한</title></head>` +
-            `<body style="font-family:sans-serif;padding:48px 16px;text-align:center"><h1>접근 권한이 없습니다</h1><p>${message}</p></body></html>`,
-        { status: 401, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-    );
-}
-
-// 보호 대상: /admin 페이지, 관리자 화면에서만 쓰는 출석 기록 삭제 API
-function requiresAuth(req: NextRequest): boolean {
-    const { pathname } = req.nextUrl;
-    if (pathname === '/admin' || pathname.startsWith('/admin/')) return true;
-    return pathname === '/api/attendance' && req.method === 'DELETE';
-}
-
 export async function middleware(req: NextRequest) {
-    if (!requiresAuth(req)) {
+    if (req.method !== 'DELETE') {
         return NextResponse.next();
     }
 
     const password = process.env.APP_PASSWORD;
     const expected = password ? await sha256(password) : TEMP_PASSWORD_HASH;
-    const key = req.nextUrl.searchParams.get(KEY_PARAM);
-
-    if (key !== null) {
-        if ((await sha256(key)) !== expected) {
-            return unauthorized(req, '비밀번호가 올바르지 않습니다.');
-        }
-        // 주소창/기록에 비밀번호가 남지 않도록 key를 제거한 주소로 이동
-        const cleanUrl = req.nextUrl.clone();
-        cleanUrl.searchParams.delete(KEY_PARAM);
-        const res = NextResponse.redirect(cleanUrl);
-        res.cookies.set(AUTH_COOKIE, expected, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            path: '/',
-            maxAge: COOKIE_MAX_AGE,
-        });
-        return res;
+    // 헤더에는 ASCII만 들어가므로 클라이언트가 encodeURIComponent로 보냄
+    let given: string | null = null;
+    try {
+        const raw = req.headers.get(ADMIN_PASSWORD_HEADER);
+        given = raw === null ? null : decodeURIComponent(raw);
+    } catch {
+        given = '';
     }
 
-    if (req.cookies.get(AUTH_COOKIE)?.value === expected) {
+    if (given && (await sha256(given)) === expected) {
         return NextResponse.next();
     }
 
-    return unauthorized(req, '관리자 페이지입니다. 공유받은 관리자 주소(비밀번호 포함)로 접속해 주세요.');
+    return NextResponse.json(
+        { error: given ? '관리자 비밀번호가 올바르지 않습니다.' : '관리자 비밀번호가 필요합니다.' },
+        { status: 401 }
+    );
 }
 
 export const config = {
-    matcher: ['/admin', '/admin/:path*', '/api/attendance'],
+    matcher: ['/api/attendance'],
 };

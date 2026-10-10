@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -26,6 +26,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import CircularProgress from '@mui/material/CircularProgress';
 import { AttendanceMatrixRow, AttendanceChange } from '@/hooks/useAdminAttendance';
 import { formatDateShort } from '@/utils/dateUtils';
+import PasswordDialog from '@/components/molecules/PasswordDialog';
 
 export type PendingChange = AttendanceChange;
 
@@ -34,7 +35,7 @@ interface AttendanceMatrixProps {
     dates: string[];
     grade: string;
     classNum: number;
-    onSaveBatch?: (changes: Record<string, AttendanceChange>) => Promise<boolean>;
+    onSaveBatch?: (changes: Record<string, AttendanceChange>, adminPassword?: string) => Promise<boolean>;
 }
 
 function StatusCell({ 
@@ -190,7 +191,9 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
     // 2. 임시 저장 상태 (Batch Save)
     const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
     const [isSaving, setIsSaving] = useState(false);
-    
+    const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+    const adminPasswordRef = useRef<string | null>(null);
+
     const pendingCount = Object.keys(pendingChanges).length;
 
     // 데이터 변경 시 pending 비우기
@@ -273,19 +276,45 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
         });
     };
 
-    const handleSaveBatch = async () => {
-        if (!onSaveBatch || pendingCount === 0) return;
+    // status가 undefined인 변경은 "기록 없음"으로 되돌린 것 — 저장 시 기존 기록 삭제(관리자 비밀번호 필요)
+    const hasRemovals = Object.values(pendingChanges).some((c) => c.status === undefined);
+
+    const runSave = async (adminPassword?: string) => {
+        if (!onSaveBatch) return;
         setIsSaving(true);
-        // status가 undefined인 변경은 "기록 없음"으로 되돌린 것 — 저장 시 기존 기록 삭제
-        const success = await onSaveBatch(pendingChanges);
+        const success = await onSaveBatch(pendingChanges, adminPassword);
         if (success) {
             setPendingChanges({});
+            // 맞게 입력한 비밀번호는 이 화면을 떠나기 전까지 다시 묻지 않음
+            if (adminPassword) adminPasswordRef.current = adminPassword;
+        } else if (adminPassword) {
+            adminPasswordRef.current = null;
         }
         setIsSaving(false);
     };
 
+    const handleSaveBatch = () => {
+        if (!onSaveBatch || pendingCount === 0) return;
+        if (hasRemovals && !adminPasswordRef.current) {
+            setPasswordDialogOpen(true);
+            return;
+        }
+        runSave(hasRemovals ? adminPasswordRef.current ?? undefined : undefined);
+    };
+
     return (
         <Box>
+            <PasswordDialog
+                open={passwordDialogOpen}
+                title="출석 기록 삭제"
+                message="'기록 없음'으로 되돌린 칸은 저장하면 기존 출석 기록이 삭제됩니다. 관리자 비밀번호를 입력해 주세요."
+                onConfirm={(password) => {
+                    setPasswordDialogOpen(false);
+                    runSave(password);
+                }}
+                onCancel={() => setPasswordDialogOpen(false)}
+            />
+
             {/* 고급 필터 제어 패널 */}
             <Paper elevation={1} sx={{ p: 2, mb: 3, borderRadius: 2, bgcolor: 'background.neutral' }}>
                 <Grid container spacing={2} alignItems="center">
