@@ -6,7 +6,6 @@ import {
     fetchStudents,
     fetchAttendance,
     saveStudentApi,
-    deleteStudentApi,
     saveAttendanceApi,
 } from '@/lib/api-client';
 
@@ -163,8 +162,12 @@ export function useAttendance(grade: string, classNum: number, date: string) {
         }
     };
 
+    // 실제 삭제 대신 '전학' 처리 — 출석 기록은 보존되고, 관리자 화면에서 재학으로 되돌릴 수 있음
     const removeStudent = async (studentId: string) => {
-        if (!confirm('정말 삭제하시겠습니까?')) return;
+        const student = students.find((s) => s.id === studentId);
+        if (!student) return;
+        if (!confirm(`${student.name} 학생을 목록에서 제외(전학 처리)하시겠습니까?
+출석 기록은 보존되며, 관리자 화면에서 되돌릴 수 있습니다.`)) return;
 
         setStudents((prev) => prev.filter((s) => s.id !== studentId));
         setAttendance((prev) => {
@@ -174,11 +177,11 @@ export function useAttendance(grade: string, classNum: number, date: string) {
         });
 
         try {
-            await deleteStudentApi(studentId);
+            await saveStudentApi({ ...student, status: '전학' });
             fetchData(true);
         } catch (e) {
             console.error(e);
-            alert('학생 삭제 실패');
+            alert('학생 제외 실패');
             fetchData(true);
         }
     };

@@ -89,7 +89,7 @@ export default function StudentRow({
                     size="small" 
                     color="error" 
                     onClick={() => onRemoveStudent?.(student.id)}
-                    title="학생 삭제"
+                    title="목록에서 제외 (전학 처리)"
                 >
                     <DeleteIcon fontSize="small" />
                 </IconButton>

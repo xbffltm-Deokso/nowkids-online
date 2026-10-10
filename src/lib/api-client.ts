@@ -22,10 +22,6 @@ export function saveStudentApi(student: Student): Promise<Student> {
     });
 }
 
-export function deleteStudentApi(id: string): Promise<Student> {
-    return request(`/api/students/${encodeURIComponent(id)}`, { method: 'DELETE' });
-}
-
 // date: 특정 날짜만, from: 해당 날짜 이후만, 둘 다 생략하면 전체 이력
 export function fetchAttendance(
     grade: string,
