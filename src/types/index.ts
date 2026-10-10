@@ -1,5 +1,5 @@
 export type Gender = 'M' | 'F';
-export type StudentStatus = '재학' | '휴학' | '전학';
+export type StudentStatus = '재학' | '휴학' | '전학' | '진급'; // 진급: 중등부로 올라감
 
 export interface Student {
     id: string;
@@ -59,4 +59,10 @@ export interface AdminLog {
     summary: string;
     count: number;
     createdAt: string;
+}
+
+export interface PromoteResult {
+    year: number;
+    graduated: number; // 마지막 학년 → 중등부 진급
+    moved: { from: string; to: string; count: number }[];
 }

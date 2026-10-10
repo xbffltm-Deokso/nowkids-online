@@ -1,4 +1,4 @@
-import { Student, AttendanceRecord, AttendanceSummaryResult, PrivateImportResult, AdminLog } from '@/types';
+import { Student, AttendanceRecord, AttendanceSummaryResult, PrivateImportResult, AdminLog, PromoteResult } from '@/types';
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
     const res = await fetch(url, init);
@@ -103,4 +103,9 @@ export async function downloadPromotionDb(grade: string, adminPassword: string):
     link.download = fileName;
     link.click();
     URL.revokeObjectURL(url);
+}
+
+// 학년 진급 처리 (한 해에 한 번)
+export function promoteStudents(adminPassword: string): Promise<PromoteResult> {
+    return request('/api/admin/promote', { method: 'POST', headers: adminHeaders(adminPassword) });
 }

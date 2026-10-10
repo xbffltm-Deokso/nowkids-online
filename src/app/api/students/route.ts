@@ -13,7 +13,7 @@ import {
 } from '@/lib/api-utils';
 
 const GENDERS = ['M', 'F'] as const;
-const STATUSES = ['재학', '휴학', '전학'] as const;
+const STATUSES = ['재학', '휴학', '전학', '진급'] as const;
 
 export const GET = withErrorHandling(async (req: NextRequest) => {
     const grade = req.nextUrl.searchParams.get('grade');

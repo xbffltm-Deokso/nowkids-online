@@ -8,6 +8,7 @@ import {
     saveStudentApi,
     saveAttendanceApi,
 } from '@/lib/api-client';
+import { isActiveStatus } from '@/utils/studentStatus';
 
 export function useAttendance(grade: string, classNum: number, date: string) {
     const [students, setStudents] = useState<Student[]>([]);
@@ -36,7 +37,7 @@ export function useAttendance(grade: string, classNum: number, date: string) {
 
             // 전학 처리된 학생은 출석 대상에서 제외 (기록은 DB에 그대로 보존)
             const sorted = studentsData
-                .filter((s) => s.status !== '전학')
+                .filter((s) => isActiveStatus(s.status))
                 .sort((a, b) => a.name.localeCompare(b.name, 'ko-KR'));
             setStudents(sorted);
 

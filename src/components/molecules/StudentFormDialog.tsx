@@ -142,6 +142,7 @@ export default function StudentFormDialog({
                                 <MenuItem value="재학">재학</MenuItem>
                                 <MenuItem value="휴학">휴학</MenuItem>
                                 <MenuItem value="전학">전학</MenuItem>
+                                <MenuItem value="진급">진급 (중등부)</MenuItem>
                             </Select>
                         </FormControl>
                     </Stack>

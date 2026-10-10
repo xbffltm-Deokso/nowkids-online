@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-
-const DEFAULT_GRADES = ['4.믿음', '5.소망', '6.사랑'];
-const DEFAULT_CLASSES = [1, 2, 3, 4];
+import { GRADES as DEFAULT_GRADES, CLASSES as DEFAULT_CLASSES } from '@/utils/grades';
 
 export function useGrades() {
     const [grades] = useState<string[]>(DEFAULT_GRADES);

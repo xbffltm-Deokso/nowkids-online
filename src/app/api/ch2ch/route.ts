@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, asc, eq, gte, like, lte, ne } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, like, lte } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { attendanceRecords, students } from '@/lib/schema';
 import { badRequest, requireDate, withErrorHandling } from '@/lib/api-utils';
@@ -30,7 +30,7 @@ const handler = withErrorHandling(async (req: NextRequest) => {
         db
             .select({ name: students.name })
             .from(students)
-            .where(and(gradeCondition, ne(students.status, '전학')))
+            .where(and(gradeCondition, inArray(students.status, ['재학', '휴학'])))
             .orderBy(asc(students.name)),
         db
             .select({

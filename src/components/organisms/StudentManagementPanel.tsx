@@ -20,6 +20,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import Alert from '@mui/material/Alert';
 import AttendanceGroupChip from '@/components/atoms/AttendanceGroupChip';
 import { useAttendanceGroups } from '@/hooks/useAttendanceGroups';
+import { isActiveStatus } from '@/utils/studentStatus';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
@@ -45,6 +46,7 @@ const STATUS_COLOR: Record<string, 'success' | 'warning' | 'default'> = {
     재학: 'success',
     휴학: 'warning',
     전학: 'default',
+    진급: 'default',
 };
 
 export default function StudentManagementPanel() {
@@ -68,7 +70,7 @@ export default function StudentManagementPanel() {
         isAllTab ? allStudentsHook : classStudentsHook;
 
     const students = useMemo(
-        () => (showInactive ? rawStudents : rawStudents.filter((s) => s.status !== '전학')),
+        () => (showInactive ? rawStudents : rawStudents.filter((s) => isActiveStatus(s.status))),
         [rawStudents, showInactive]
     );
 
@@ -141,7 +143,7 @@ export default function StudentManagementPanel() {
                                 onChange={(e) => setShowInactive(e.target.checked)}
                             />
                         }
-                        label="전학 학생 포함"
+                        label="전학·진급 학생 포함"
                     />
                 </Stack>
                 <Button
@@ -187,7 +189,7 @@ export default function StudentManagementPanel() {
                                     <TableRow
                                         key={student.id}
                                         sx={{
-                                            opacity: student.status === '전학' ? 0.5 : 1,
+                                            opacity: isActiveStatus(student.status) ? 1 : 0.5,
                                             '&:hover': { bgcolor: 'action.hover' },
                                         }}
                                     >
@@ -217,7 +219,7 @@ export default function StudentManagementPanel() {
                                                     <EditIcon fontSize="small" />
                                                 </IconButton>
                                             </Tooltip>
-                                            {student.status !== '전학' && (
+                                            {isActiveStatus(student.status) && (
                                                 <Tooltip title="비활성화 (전학 처리)">
                                                     <IconButton
                                                         size="small"
