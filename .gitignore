@@ -34,3 +34,8 @@ Thumbs.db
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+
+# 교적·개인정보 엑셀 (공개 저장소에 올리지 않음)
+*.xls
+*.xlsx
+*.csv
