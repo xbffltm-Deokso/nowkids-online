@@ -6,7 +6,7 @@ import { ApiError, badRequest, withErrorHandling } from '@/lib/api-utils';
 import { clientIp, requireAdmin } from '@/lib/admin-auth';
 import { UUID_RE } from '@/lib/department-admin';
 import { countingAge, readCh2chRoster, RosterRow } from '@/lib/ch2ch-roster';
-import { matchStudent } from '@/lib/student-matching';
+import { baseName, couldBeSame, matchStudent } from '@/lib/student-matching';
 import { isActiveStatus } from '@/utils/studentStatus';
 
 // POST /api/admin/roster-sync — 부서를 고르고 ch2ch 교육기관 명단(.xls)으로 그 부서 학생을 맞춤
@@ -77,13 +77,22 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
     for (const row of roster.rows) {
         const gradeDigit = /\d/.exec(row.sub ?? '')?.[0];
-        let pool = candidates;
+        // 같은 사람 후보:
+        // - 이 부서 학생: 생년월일이 둘 다 있는데 서로 다르면 제외
+        // - 다른 부서 학생: 생년월일이 같을 때만 (이름만 같은 다른 아이를 옮기지 않게)
+        let pool = candidates.filter((c) =>
+            c.departmentId === departmentId
+                ? !(row.birthDate && c.birthDate && c.birthDate !== row.birthDate)
+                : !!row.birthDate && c.birthDate === row.birthDate
+        );
         if (row.birthDate) {
-            const sameName = candidates.filter((c) => c.name.replace(/[A-Z]+$/, '') === row.name.replace(/[A-Z]+$/, ''));
+            const sameName = pool.filter((c) => couldBeSame(c.name, row.name));
             const sameBirth = sameName.filter((c) => c.birthDate === row.birthDate);
             if (sameName.length > 1 && sameBirth.length === 1) pool = sameBirth;
         }
-        const result = matchStudent(pool, row.name, gradeDigit);
+        // 같은 명단에 알파벳만 다른 이름(김하준A·김하준B)이 있으면 표기가 다른 이름은 연결하지 않음
+        const hasRival = roster.rows.some((o) => o !== row && o.name !== row.name && baseName(o.name) === baseName(row.name));
+        const result = matchStudent(pool, row.name, gradeDigit, !hasRival);
         if (result.kind === 'ambiguous') {
             ambiguous.push({ name: row.name, sub: row.sub });
             continue;

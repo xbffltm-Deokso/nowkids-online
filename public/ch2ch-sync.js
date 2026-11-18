@@ -192,6 +192,15 @@
         var baseName = function (n) {
             return n.replace(/\s*[A-Z]+$/, '');
         };
+        var suffixOf = function (n) {
+            var m = /[A-Z]+$/.exec(n.trim());
+            return m ? m[0] : '';
+        };
+        // 알파벳이 한쪽에만 있을 때만 같은 사람 후보 (김하준A ↔ 김하준B 는 다른 사람)
+        var sameBase = function (a, b) {
+            if (baseName(a) !== baseName(b)) return false;
+            return !suffixOf(a) || !suffixOf(b);
+        };
         var looseMatches = [];
         var ambiguous = [];
         var unmatchedCh2ch = ch2chNames.filter(function (n) {
@@ -201,12 +210,13 @@
             return !usedNowkids[n];
         });
         unmatchedCh2ch.forEach(function (name) {
-            var base = baseName(name);
             var candidates = freeNowkids.filter(function (n) {
-                return baseName(n) === base;
+                return sameBase(name, n);
             });
             var rivals = unmatchedCh2ch.filter(function (n) {
-                return baseName(n) === base;
+                return candidates.some(function (c) {
+                    return sameBase(n, c);
+                });
             });
             if (candidates.length === 1 && rivals.length === 1) {
                 matchedName[name] = candidates[0];
