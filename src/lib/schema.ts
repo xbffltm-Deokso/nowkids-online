@@ -23,8 +23,9 @@ export const departments = pgTable(
         ageMax: integer('age_max'),
         sortOrder: integer('sort_order').notNull().default(0),
         ch2chOrgName: text('ch2ch_org_name'), // 예: "[덕소]소년부"
-        // 교사용 출석 링크 토큰의 SHA-256 해시 (원문은 저장하지 않음, 교체하면 이전 링크는 즉시 무효)
+        // 교사용 출석 링크 — 조회는 해시로, 원문은 관리자가 다시 복사할 수 있게 보관 (교체하면 이전 링크는 즉시 무효)
         linkTokenHash: text('link_token_hash').unique(),
+        linkToken: text('link_token'),
         nextDepartmentId: uuid('next_department_id').references((): AnyPgColumn => departments.id),
         archivedAt: timestamp('archived_at', { withTimezone: true }), // 폐지 부서는 지우지 않고 숨김
         createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

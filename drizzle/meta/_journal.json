@@ -36,6 +36,13 @@
       "when": 1794979467105,
       "tag": "0004_backfill_departments",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794984844789,
+      "tag": "0005_department_link_token",
+      "breakpoints": true
     }
   ]
 }

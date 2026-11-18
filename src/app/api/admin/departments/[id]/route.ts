@@ -46,7 +46,7 @@ export const PATCH = withErrorHandling(async (req: NextRequest, { params }: { pa
             ...(input.archived === undefined
                 ? {}
                 : input.archived
-                  ? { archivedAt: dep.archivedAt ?? new Date(), linkTokenHash: null } // 폐지하면 출석 링크도 막음
+                  ? { archivedAt: dep.archivedAt ?? new Date(), linkTokenHash: null, linkToken: null } // 폐지하면 출석 링크도 막음
                   : { archivedAt: null }),
         })
         .where(eq(departments.id, id))
