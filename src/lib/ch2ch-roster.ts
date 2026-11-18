@@ -103,7 +103,15 @@ export function readCh2chRoster(buffer: ArrayBuffer): Roster {
         .map((tr) => tr.split(/<t[dh][^>]*>/i).slice(1).map((cell) => cell.replace(/<\/t[dh]>[\s\S]*$/i, '')));
 
     const headerIndex = rows.findIndex((r) => r.map(text).includes('이름') && r.map(text).includes('반'));
-    if (headerIndex < 0) badRequest("명단에서 '이름'·'반' 머리글을 찾을 수 없습니다.");
+    if (headerIndex < 0) {
+        // 요람(가정별 카드·사진) 형식은 표 구조가 달라 읽지 않음
+        if (/seq_mark|pswp|요람/.test(html)) {
+            badRequest(
+                "'요람' 형식 파일입니다. ch2ch 교육기관 화면에서 '리스트(명단)'로 내려받은 파일을 올려 주세요. (예: 2026년[덕소]고등부리스트.xls)"
+            );
+        }
+        badRequest("명단에서 '이름'·'반' 머리글을 찾을 수 없습니다. ch2ch 교육기관 '리스트'로 내려받은 파일인지 확인해 주세요.");
+    }
     const header = rows[headerIndex].map(text);
     const col = (label: string) => header.indexOf(label);
     const idx = {

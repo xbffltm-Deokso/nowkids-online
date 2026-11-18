@@ -11,7 +11,6 @@ import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
@@ -22,10 +21,10 @@ import DialogActions from '@mui/material/DialogActions';
 import TypographyAtom from '@/components/atoms/TypographyAtom';
 import PasswordDialog from '@/components/molecules/PasswordDialog';
 import { useAdminPassword } from '@/hooks/useAdminPassword';
-import { downloadPromotionDb, fetchAdminLogs, fetchStudents, importPrivateData, promoteStudents } from '@/lib/api-client';
+import { downloadPromotionDb, fetchAdminLogs, fetchStudents, promoteStudents } from '@/lib/api-client';
 import { isActiveStatus } from '@/utils/studentStatus';
 import { useGrades } from '@/hooks/useGrades';
-import { AdminLog, PrivateImportResult, PromoteResult } from '@/types';
+import { AdminLog, PromoteResult } from '@/types';
 import DepartmentLinksSection from '@/components/organisms/DepartmentLinksSection';
 import DepartmentManagerSection from '@/components/organisms/DepartmentManagerSection';
 import PromotionExportSection from '@/components/organisms/PromotionExportSection';
@@ -39,25 +38,13 @@ const ACTION_LABEL: Record<AdminLog['action'], string> = {
     department: '부서 관리',
 };
 
-function NameList({ title, names, severity }: { title: string; names: string[]; severity: 'info' | 'warning' }) {
-    if (names.length === 0) return null;
-    return (
-        <Alert severity={severity} sx={{ mt: 1 }}>
-            <b>{title} ({names.length}명)</b>: {names.join(', ')}
-        </Alert>
-    );
-}
-
 // Admin "진급·개인정보" 탭 — 개인정보는 화면에 표시하지 않고, 비밀번호 확인 후 서버에서만 처리
 export default function AdminDataPanel({ onDepartmentsChanged }: { onDepartmentsChanged?: () => void } = {}) {
     const { withPassword, dialogProps } = useAdminPassword();
     const [error, setError] = useState<string | null>(null);
     const [logs, setLogs] = useState<AdminLog[]>([]);
 
-    const [file, setFile] = useState<File | null>(null);
     const [deptVersion, setDeptVersion] = useState(0);
-    const [importing, setImporting] = useState(false);
-    const [importResult, setImportResult] = useState<PrivateImportResult | null>(null);
 
     const { grades } = useGrades();
 
@@ -73,23 +60,6 @@ export default function AdminDataPanel({ onDepartmentsChanged }: { onDepartments
     useEffect(() => {
         loadLogs();
     }, [loadLogs]);
-
-    const handleImport = () => {
-        if (!file) return;
-        setError(null);
-        withPassword(
-            async (password) => {
-                setImporting(true);
-                try {
-                    setImportResult(await importPrivateData(file, password));
-                    loadLogs();
-                } finally {
-                    setImporting(false);
-                }
-            },
-            (err) => setError(`가져오기 실패: ${err.message}`)
-        );
-    };
 
     const openPromoteConfirm = async () => {
         setError(null);
@@ -177,54 +147,6 @@ export default function AdminDataPanel({ onDepartmentsChanged }: { onDepartments
                     onDepartmentsChanged?.();
                 }}
             />
-
-            {/* 1. 교적 엑셀 가져오기 */}
-            <Paper sx={{ p: 3 }}>
-                <TypographyAtom variant="h6" fontWeight="bold" gutterBottom>
-                    개인정보 엑셀 가져오기
-                </TypographyAtom>
-                <TypographyAtom variant="body2" color="text.secondary" gutterBottom>
-                    ch2ch 명단(.xls)이나 구글 시트를 엑셀(.xlsx)로 받은 파일을 올리면, 이미 있는 학생을 이름으로 찾아
-                    선생님·생년월일·휴대폰·부모 이름과 연락처·주소·비고만 저장합니다. 학생 추가·부서 이동은 하지 않으니, 부서
-                    명단을 맞추려면 위의 &quot;교적 명단 동기화&quot;를 쓰세요.
-                </TypographyAtom>
-                <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
-                    <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
-                        파일 선택
-                        <input
-                            hidden
-                            type="file"
-                            accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                            onChange={(e) => {
-                                setFile(e.target.files?.[0] ?? null);
-                                setImportResult(null);
-                            }}
-                        />
-                    </Button>
-                    <TypographyAtom variant="body2">{file ? file.name : '선택된 파일 없음'}</TypographyAtom>
-                    <Button
-                        variant="contained"
-                        onClick={handleImport}
-                        disabled={!file || importing}
-                        startIcon={importing ? <CircularProgress size={16} /> : undefined}
-                    >
-                        가져오기
-                    </Button>
-                </Stack>
-
-                {importResult && (
-                    <>
-                        <Alert severity="success" sx={{ mt: 2 }}>
-                            엑셀 {importResult.totalRows}행 중 <b>{importResult.updated}명</b>의 개인정보를 저장했습니다.
-                        </Alert>
-                        <NameList title="이름 표기가 달라 연결한 학생" names={importResult.looseMatches} severity="info" />
-                        <NameList title="NowKids에 없는 이름 (저장 안 됨)" names={importResult.unmatched} severity="warning" />
-                        <NameList title="누군지 확실하지 않아 건너뜀" names={importResult.ambiguous} severity="warning" />
-                        <NameList title="엑셀에 두 번 나와 뒤쪽은 건너뜀" names={importResult.duplicates} severity="warning" />
-                        <NameList title="엑셀에 없어 개인정보가 없는 학생" names={importResult.studentsWithoutData} severity="warning" />
-                    </>
-                )}
-            </Paper>
 
             {/* 2. 진급자 DB 추출 */}
             <PromotionExportSection key={`export-${deptVersion}`} onExported={loadLogs} />
