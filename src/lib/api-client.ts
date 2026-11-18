@@ -85,11 +85,15 @@ export function fetchAdminLogs(): Promise<AdminLog[]> {
 }
 
 // 진급자 DB 엑셀 내려받기 — 파일을 받아 브라우저 다운로드로 저장
-export async function downloadPromotionDb(grade: string, adminPassword: string): Promise<void> {
+// target: { departmentId, gradeId? } (부서·학년) 또는 { grade } (예전 학년 문자열)
+export async function downloadPromotionDb(
+    target: { departmentId: string; gradeId?: string } | { grade: string },
+    adminPassword: string
+): Promise<void> {
     const res = await fetch('/api/admin/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...adminHeaders(adminPassword) },
-        body: JSON.stringify({ grade }),
+        body: JSON.stringify(target),
     });
     if (!res.ok) {
         const body = await res.json().catch(() => null);

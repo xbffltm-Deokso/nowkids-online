@@ -28,6 +28,7 @@ import { useGrades } from '@/hooks/useGrades';
 import { AdminLog, PrivateImportResult, PromoteResult } from '@/types';
 import DepartmentLinksSection from '@/components/organisms/DepartmentLinksSection';
 import DepartmentManagerSection from '@/components/organisms/DepartmentManagerSection';
+import PromotionExportSection from '@/components/organisms/PromotionExportSection';
 
 const ACTION_LABEL: Record<AdminLog['action'], string> = {
     import: '가져오기',
@@ -58,8 +59,6 @@ export default function AdminDataPanel() {
     const [importResult, setImportResult] = useState<PrivateImportResult | null>(null);
 
     const { grades } = useGrades();
-    const [exportGrade, setExportGrade] = useState(grades[grades.length - 1] ?? 'all');
-    const [exporting, setExporting] = useState(false);
 
     // 진급 처리: 확인 창에 학년별 재적 인원을 보여 준 뒤 실행
     const [promoteCounts, setPromoteCounts] = useState<Record<string, number> | null>(null);
@@ -88,22 +87,6 @@ export default function AdminDataPanel() {
                 }
             },
             (err) => setError(`가져오기 실패: ${err.message}`)
-        );
-    };
-
-    const handleExport = () => {
-        setError(null);
-        withPassword(
-            async (password) => {
-                setExporting(true);
-                try {
-                    await downloadPromotionDb(exportGrade, password);
-                    loadLogs();
-                } finally {
-                    setExporting(false);
-                }
-            },
-            (err) => setError(`추출 실패: ${err.message}`)
         );
     };
 
@@ -230,31 +213,7 @@ export default function AdminDataPanel() {
             </Paper>
 
             {/* 2. 진급자 DB 추출 */}
-            <Paper sx={{ p: 3 }}>
-                <TypographyAtom variant="h6" fontWeight="bold" gutterBottom>
-                    진급자 DB 추출
-                </TypographyAtom>
-                <TypographyAtom variant="body2" color="text.secondary" gutterBottom>
-                    고른 학년 학생의 개인정보와 최근 52주 출석률·출석그룹(A~E)을 엑셀로 내려받습니다. 중등부로 올려 보낼 때는
-                    6학년을 고르세요. 개인정보가 담긴 파일이니 필요한 사람에게만 전달하고 사용 후 삭제해 주세요.
-                </TypographyAtom>
-                <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 2 }}>
-                    <Select size="small" value={exportGrade} onChange={(e) => setExportGrade(e.target.value)}>
-                        {grades.map((g) => (
-                            <MenuItem key={g} value={g}>{g}</MenuItem>
-                        ))}
-                        <MenuItem value="all">전체 학년</MenuItem>
-                    </Select>
-                    <Button
-                        variant="contained"
-                        onClick={handleExport}
-                        disabled={exporting}
-                        startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
-                    >
-                        엑셀로 추출
-                    </Button>
-                </Stack>
-            </Paper>
+            <PromotionExportSection key={`export-${deptVersion}`} onExported={loadLogs} />
 
             {/* 3. 진급 처리 */}
             <Paper sx={{ p: 3 }}>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { asc, count, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { classes, departments, divisions, students } from '@/lib/schema';
+import { classes, departments, divisions, grades, students } from '@/lib/schema';
 import { withErrorHandling } from '@/lib/api-utils';
 import { ACTIVE_STATUSES } from '@/utils/studentStatus';
 
@@ -46,7 +46,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
         );
     }
 
-    const [divisionRows, classRows, countRows] = await Promise.all([
+    const [divisionRows, classRows, countRows, gradeRows] = await Promise.all([
         db.select({ id: divisions.id, name: divisions.name }).from(divisions).orderBy(asc(divisions.sortOrder)),
         db
             .select({ id: classes.id, departmentId: classes.departmentId, name: classes.name })
@@ -58,6 +58,11 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
             .from(students)
             .where(inArray(students.status, ACTIVE_STATUSES))
             .groupBy(students.departmentId),
+        db
+            .select({ id: grades.id, departmentId: grades.departmentId, name: grades.name })
+            .from(grades)
+            .where(isNull(grades.archivedAt))
+            .orderBy(asc(grades.sortOrder)),
     ]);
     const counts = new Map(countRows.map((c) => [c.departmentId, c.n]));
 
@@ -70,6 +75,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
             archivedAt: undefined,
             activeStudents: counts.get(r.id) ?? 0,
             classes: classRows.filter((c) => c.departmentId === r.id).map(({ id, name }) => ({ id, name })),
+            grades: gradeRows.filter((g) => g.departmentId === r.id).map(({ id, name }) => ({ id, name })),
         })),
     });
 });

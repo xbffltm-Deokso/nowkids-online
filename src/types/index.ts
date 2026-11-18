@@ -106,6 +106,7 @@ export interface DepartmentDetail {
     archived: boolean;
     activeStudents: number;
     classes: { id: string; name: string }[];
+    grades: { id: string; name: string }[];
 }
 
 export interface DepartmentOverview {

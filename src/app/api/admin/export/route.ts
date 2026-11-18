@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, SQL } from 'drizzle-orm';
 import ExcelJS from 'exceljs';
 import { db } from '@/lib/db';
-import { adminLogs, students, studentPrivate } from '@/lib/schema';
-import { asObject, readJson, requireString, withErrorHandling } from '@/lib/api-utils';
+import { adminLogs, classes, departments, grades, students, studentPrivate } from '@/lib/schema';
+import { ApiError, asObject, badRequest, readJson, requireString, withErrorHandling } from '@/lib/api-utils';
+import { UUID_RE } from '@/lib/department-admin';
 import { clientIp, requireAdmin } from '@/lib/admin-auth';
 import { computeAttendanceSummaries } from '@/lib/attendance-groups';
 import { isActiveStatus } from '@/utils/studentStatus';
 
-// POST /api/admin/export { grade: "6.사랑" | "all" } — 진급자 DB 엑셀 (개인정보 + 최근 52주 출석률·그룹)
+// POST /api/admin/export { departmentId, gradeId? } — 부서(학년) 단위. 예전 { grade: "6.사랑" | "all" }도 동작
+// — 진급자 DB 엑셀 (개인정보 + 최근 52주 출석률·그룹)
 // 첫 행이 머리글이라 추출한 파일을 그대로 "교적 엑셀 가져오기"에 다시 쓸 수 있음
 const COLUMNS: { header: string; key: string; width: number }[] = [
     { header: '이름', key: 'name', width: 10 },
     { header: '학년', key: 'grade', width: 8 },
-    { header: '반', key: 'classNum', width: 5 },
+    { header: '반', key: 'classNum', width: 10 },
     { header: '성별', key: 'gender', width: 5 },
     { header: '선생님', key: 'teacher', width: 14 },
     { header: '출석률', key: 'rate', width: 8 },
@@ -31,15 +33,40 @@ const COLUMNS: { header: string; key: string; width: number }[] = [
 
 export const POST = withErrorHandling(async (req: NextRequest) => {
     await requireAdmin(req);
-    const grade = requireString(asObject(await readJson(req)).grade, 'grade');
+    const body = asObject(await readJson(req));
+    let condition: SQL | undefined;
+    let target: string;
+    if (body.departmentId !== undefined) {
+        if (typeof body.departmentId !== 'string' || !UUID_RE.test(body.departmentId)) badRequest('부서가 올바르지 않습니다.');
+        const [dep] = await db.select({ name: departments.name }).from(departments).where(eq(departments.id, body.departmentId));
+        if (!dep) throw new ApiError(404, '부서를 찾을 수 없습니다.');
+        condition = eq(students.departmentId, body.departmentId);
+        target = dep.name;
+        if (body.gradeId) {
+            if (typeof body.gradeId !== 'string' || !UUID_RE.test(body.gradeId)) badRequest('학년이 올바르지 않습니다.');
+            const [g] = await db
+                .select({ name: grades.name })
+                .from(grades)
+                .where(and(eq(grades.id, body.gradeId), eq(grades.departmentId, body.departmentId)));
+            if (!g) throw new ApiError(404, '이 부서의 학년이 아닙니다.');
+            condition = and(condition, eq(students.gradeId, body.gradeId));
+            target = `${dep.name} ${g.name}`;
+        }
+    } else {
+        const grade = requireString(body.grade, 'grade');
+        condition = grade === 'all' ? undefined : eq(students.grade, grade);
+        target = grade === 'all' ? '전체 학년' : grade;
+    }
 
     const [rows, groups] = await Promise.all([
         db
-            .select({ student: students, private: studentPrivate })
+            .select({ student: students, private: studentPrivate, gradeName: grades.name, className: classes.name })
             .from(students)
             .leftJoin(studentPrivate, eq(studentPrivate.studentId, students.id))
-            .where(grade === 'all' ? undefined : eq(students.grade, grade))
-            .orderBy(asc(students.grade), asc(students.classNum), asc(students.name)),
+            .leftJoin(grades, eq(grades.id, students.gradeId))
+            .leftJoin(classes, eq(classes.id, students.classId))
+            .where(condition)
+            .orderBy(asc(grades.sortOrder), asc(classes.sortOrder), asc(students.grade), asc(students.classNum), asc(students.name)),
         computeAttendanceSummaries(),
     ]);
     const active = rows.filter((r) => isActiveStatus(r.student.status));
@@ -50,12 +77,12 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     sheet.columns = COLUMNS;
     sheet.getRow(1).font = { bold: true };
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
-    for (const { student, private: p } of active) {
+    for (const { student, private: p, gradeName, className } of active) {
         const summary = summaryOf.get(student.id);
         sheet.addRow({
             name: student.name,
-            grade: student.grade,
-            classNum: student.classNum,
+            grade: gradeName ?? student.grade,
+            classNum: className ?? (student.classNum || ''),
             gender: student.gender === 'M' ? '남' : '여',
             teacher: p?.teacher ?? '',
             rate: summary?.rate !== null && summary?.rate !== undefined ? `${summary.rate}%` : '',
@@ -74,7 +101,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
     const info = workbook.addWorksheet('안내');
     info.addRows([
-        ['대상', grade === 'all' ? '전체 학년' : grade],
+        ['대상', target],
         ['인원', active.length],
         ['출석률 기간', `${groups.from} ~ ${groups.to} 중 출석부를 쓴 ${groups.countedWeeks}주 (처음 온 날 이후만)`],
         ['출석그룹', 'A 80% 이상, B 60% 이상, C 40% 이상, D 20% 이상, E 20% 미만'],
@@ -87,12 +114,12 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
     await db.insert(adminLogs).values({
         action: 'export',
-        summary: `진급자 DB 추출: ${grade === 'all' ? '전체 학년' : grade} ${active.length}명`,
+        summary: `진급자 DB 추출: ${target} ${active.length}명`,
         count: active.length,
         ip: clientIp(req),
     });
 
-    const fileName = `진급자DB_${grade === 'all' ? '전체' : grade}_${groups.to}.xlsx`;
+    const fileName = `진급자DB_${target.replace(/\s+/g, '_')}_${groups.to}.xlsx`;
     return new NextResponse(buffer as ArrayBuffer, {
         headers: {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
