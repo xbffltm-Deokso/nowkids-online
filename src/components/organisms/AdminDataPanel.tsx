@@ -26,11 +26,13 @@ import { downloadPromotionDb, fetchAdminLogs, fetchStudents, importPrivateData, 
 import { isActiveStatus } from '@/utils/studentStatus';
 import { useGrades } from '@/hooks/useGrades';
 import { AdminLog, PrivateImportResult, PromoteResult } from '@/types';
+import DepartmentLinksSection from '@/components/organisms/DepartmentLinksSection';
 
 const ACTION_LABEL: Record<AdminLog['action'], string> = {
     import: '가져오기',
     export: '추출',
     promote: '진급 처리',
+    link: '출석 링크',
 };
 
 function NameList({ title, names, severity }: { title: string; names: string[]; severity: 'info' | 'warning' }) {
@@ -172,6 +174,8 @@ export default function AdminDataPanel() {
             </Alert>
 
             {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
+
+            <DepartmentLinksSection />
 
             {/* 1. 교적 엑셀 가져오기 */}
             <Paper sx={{ p: 3 }}>

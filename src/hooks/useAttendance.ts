@@ -6,7 +6,7 @@ import {
     fetchStudents,
     fetchAttendance,
     saveStudentApi,
-    saveAttendanceApi,
+    saveAttendanceChangesApi,
 } from '@/lib/api-client';
 import { isActiveStatus } from '@/utils/studentStatus';
 
@@ -17,6 +17,8 @@ export function useAttendance(grade: string, classNum: number, date: string) {
     const [error, setError] = useState<string | null>(null);
     // 학년/반을 빠르게 바꿀 때 늦게 도착한 이전 응답이 화면을 덮어쓰지 않도록 최신 요청만 반영
     const latestRequestRef = useRef(0);
+    // DB에 저장되어 있던 값 — 저장할 때 바꾼 학생만 보내기 위해 비교용으로 보관
+    const storedRef = useRef<Record<string, { status: boolean; reason: string }>>({});
 
     const fetchData = useCallback(async (isSilent = false) => {
         const requestId = ++latestRequestRef.current;
@@ -42,6 +44,9 @@ export function useAttendance(grade: string, classNum: number, date: string) {
             setStudents(sorted);
 
             const activeIds = new Set(sorted.map((s) => s.id));
+            storedRef.current = Object.fromEntries(
+                attendanceData.map((r) => [r.studentId, { status: r.status, reason: r.reason ?? '' }])
+            );
             const attendanceMap: Record<string, AttendanceRecord> = {};
             for (const record of attendanceData) {
                 if (!activeIds.has(record.studentId)) continue;
@@ -109,17 +114,24 @@ export function useAttendance(grade: string, classNum: number, date: string) {
         }));
     };
 
+    // 바꾼 학생만 저장하고, 기록이 없던 학생은 결석으로 채움(그사이 다른 선생님이 저장했으면 그대로 둠)
     const saveAttendance = async () => {
         try {
-            const records = Object.values(attendance).map((r) => ({
-                id: r.id || `${r.studentId}_${date}`,
-                studentId: r.studentId,
-                date,
-                status: r.status,
-                reason: r.reason || undefined,
-            }));
-            await saveAttendanceApi(records);
+            const stored = storedRef.current;
+            const changes: { studentId: string; status: boolean; reason: string | null }[] = [];
+            const fillAbsent: string[] = [];
+            for (const r of Object.values(attendance)) {
+                const before = stored[r.studentId];
+                const reason = r.status ? '' : r.reason || '';
+                const differs = before
+                    ? before.status !== r.status || before.reason !== reason
+                    : r.status || reason !== '';
+                if (differs) changes.push({ studentId: r.studentId, status: r.status, reason: reason || null });
+                else if (!before) fillAbsent.push(r.studentId);
+            }
+            await saveAttendanceChangesApi(date, changes, fillAbsent);
             alert('저장되었습니다.');
+            fetchData(true);
         } catch (e) {
             console.error(e);
             alert('저장 실패');

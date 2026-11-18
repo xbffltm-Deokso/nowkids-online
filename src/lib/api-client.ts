@@ -109,3 +109,16 @@ export async function downloadPromotionDb(grade: string, adminPassword: string):
 export function promoteStudents(adminPassword: string): Promise<PromoteResult> {
     return request('/api/admin/promote', { method: 'POST', headers: adminHeaders(adminPassword) });
 }
+
+// 바꾼 학생만 저장 (+ 기록 없던 학생은 결석으로 채움, 이미 있으면 그대로)
+export function saveAttendanceChangesApi(
+    date: string,
+    changes: { studentId: string; status: boolean; reason: string | null }[],
+    fillAbsent: string[]
+): Promise<{ saved: number; filled: number }> {
+    return request('/api/attendance/changes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, changes, fillAbsent }),
+    });
+}

@@ -1,5 +1,9 @@
-export function getSundayOfCurrentWeek(): string {
-    return getSundayOfWeek(new Date());
+// 한국 시간(UTC+9) 기준 이번 주 일요일 — 서버(Vercel)는 UTC라 기기 시간대에 기대지 않고 직접 계산
+// (UTC로 계산하면 한국 일요일 0~9시에 지난주 일요일이 나옴)
+export function getSundayOfCurrentWeek(now: Date = new Date()): string {
+    const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+    kst.setUTCDate(kst.getUTCDate() - kst.getUTCDay());
+    return kst.toISOString().slice(0, 10);
 }
 
 export function getSundayOfWeek(date: Date): string {
