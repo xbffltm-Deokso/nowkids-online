@@ -160,8 +160,8 @@ export function readCh2chRoster(buffer: ArrayBuffer): Roster {
 // 구조: "학년반 : 1학년" 묶음(위에 담임 카드) 아래로 세대(가정) 줄이 이어짐
 // 세대 줄: [사진 + 학생 이름] [등록일·집전화·휴대폰·학교,직장·주소] [관계 | 이름 | 생년월일 | 직분 | 신급 | 목장 | 휴대폰]
 // 가족 열은 <br>로 구분된 세대원 목록 — 사진 아래 이름이 이 부서 학생
-const MALE = /^(자|아들|손자|남동생|형|오빠|조카)$/;
-const FEMALE = /^(녀|딸|손녀|여동생|누나|언니)$/;
+const MALE = /^(자|아들|손자|남동생|형|오빠|장남|차남|삼남)$/; // 조카처럼 남녀 모두 되는 관계는 넣지 않음
+const FEMALE = /^(녀|딸|손녀|여동생|누나|언니|장녀|차녀|삼녀)$/;
 const PERSON_ROW = /<tr[^>]*align=["']?center["']?[^>]*valign=["']?top["']?[^>]*>/i;
 
 function yoramLists(row: string): string[][] {
@@ -188,6 +188,11 @@ function readYoram(html: string): Roster {
         // 담임 카드: 이름 칸 값들
         const teachers = [...head.matchAll(/>\s*이름\s*<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)].map((m) => text(m[1])).filter(Boolean);
         teachersSkipped += teachers.length;
+        // "학년반 : 교사" 묶음은 선생님 세대라 학생에서 뺌
+        if (sub && /교사|선생/.test(sub)) {
+            teachersSkipped += people.length;
+            continue;
+        }
 
         for (const row of people) {
             const photoCell = row.split(/<\/table>\s*<\/td>/i)[0];
