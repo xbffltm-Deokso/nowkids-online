@@ -27,6 +27,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { AttendanceMatrixRow, AttendanceChange } from '@/hooks/useAdminAttendance';
 import { formatDateShort } from '@/utils/dateUtils';
 import PasswordDialog from '@/components/molecules/PasswordDialog';
+import { passwordRequired } from '@/hooks/useAdminPassword';
 
 export type PendingChange = AttendanceChange;
 
@@ -319,9 +320,9 @@ export default function AttendanceMatrix({ rows, dates, scopeLabel, showClass, o
         setIsSaving(false);
     };
 
-    const handleSaveBatch = () => {
+    const handleSaveBatch = async () => {
         if (!onSaveBatch || pendingCount === 0) return;
-        if (hasRemovals && !adminPasswordRef.current) {
+        if (hasRemovals && !adminPasswordRef.current && (await passwordRequired())) {
             setPasswordDialogOpen(true);
             return;
         }

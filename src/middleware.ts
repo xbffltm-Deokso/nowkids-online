@@ -11,8 +11,14 @@ function isAdminRequest(req: NextRequest): boolean {
     return pathname === '/api/attendance' && req.method === 'DELETE';
 }
 
+// 미리보기에서 비밀번호를 끈 경우 (src/lib/admin-auth.ts adminPasswordDisabled와 같은 조건)
+function passwordDisabled(): boolean {
+    if (process.env.ADMIN_PASSWORD_DISABLED === '1') return true;
+    return process.env.VERCEL_ENV === 'preview' && !process.env.APP_PASSWORD;
+}
+
 export function middleware(req: NextRequest) {
-    if (isAdminRequest(req) && !req.headers.get(ADMIN_PASSWORD_HEADER)) {
+    if (isAdminRequest(req) && !passwordDisabled() && !req.headers.get(ADMIN_PASSWORD_HEADER)) {
         return NextResponse.json({ error: '관리자 비밀번호가 필요합니다.' }, { status: 401 });
     }
     return NextResponse.next();

@@ -34,7 +34,16 @@ async function failureCount(since: Date, ip?: string): Promise<number> {
     return row?.n ?? 0;
 }
 
+// 미리보기 배포(Vercel Preview)에서 APP_PASSWORD를 넣지 않았으면 관리자 비밀번호를 묻지 않음 (임시)
+// 라이브(Production)·로컬은 지금처럼 비밀번호 필요. ADMIN_PASSWORD_DISABLED=1로도 끌 수 있음
+// TODO: 라이브 배포 전 교역자 로그인과 함께 다시 정리
+export function adminPasswordDisabled(): boolean {
+    if (process.env.ADMIN_PASSWORD_DISABLED === '1') return true;
+    return process.env.VERCEL_ENV === 'preview' && !process.env.APP_PASSWORD;
+}
+
 export async function requireAdmin(req: NextRequest): Promise<void> {
+    if (adminPasswordDisabled()) return;
     const ip = clientIp(req);
     const now = Date.now();
 
