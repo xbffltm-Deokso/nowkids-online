@@ -39,3 +39,6 @@ next-env.d.ts
 *.xls
 *.xlsx
 *.csv
+
+# Neon CLI 설정
+.neon
