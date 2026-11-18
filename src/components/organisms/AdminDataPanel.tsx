@@ -29,6 +29,7 @@ import { AdminLog, PrivateImportResult, PromoteResult } from '@/types';
 import DepartmentLinksSection from '@/components/organisms/DepartmentLinksSection';
 import DepartmentManagerSection from '@/components/organisms/DepartmentManagerSection';
 import PromotionExportSection from '@/components/organisms/PromotionExportSection';
+import RosterSyncSection from '@/components/organisms/RosterSyncSection';
 
 const ACTION_LABEL: Record<AdminLog['action'], string> = {
     import: '가져오기',
@@ -169,10 +170,18 @@ export default function AdminDataPanel({ onDepartmentsChanged }: { onDepartments
             />
             <DepartmentLinksSection key={deptVersion} />
 
+            <RosterSyncSection
+                onApplied={() => {
+                    loadLogs();
+                    setDeptVersion((v) => v + 1);
+                    onDepartmentsChanged?.();
+                }}
+            />
+
             {/* 1. 교적 엑셀 가져오기 */}
             <Paper sx={{ p: 3 }}>
                 <TypographyAtom variant="h6" fontWeight="bold" gutterBottom>
-                    교적 엑셀 가져오기
+                    개인정보 엑셀(.xlsx) 가져오기
                 </TypographyAtom>
                 <TypographyAtom variant="body2" color="text.secondary" gutterBottom>
                     구글 시트(예: 2026 DataBase)를 파일 → 다운로드 → Microsoft Excel(.xlsx)로 받아 올려 주세요. 이름·생년월일

@@ -16,6 +16,7 @@ export interface Student {
     gradeLabel?: string; // 학년 이름 (학년 없는 부서는 빈 문자열)
     classLabel?: string; // 반 이름 (없으면 "미배정")
     order?: number; // 학년·반 표시 순서
+    needsRegistration?: boolean; // 교적(ch2ch) 명단에 없어 등록이 필요
 }
 
 // 학생 조회 범위 — 부서(필수)와 학년·반(선택). classId 'none' = 반 미배정

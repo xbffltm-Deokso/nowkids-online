@@ -171,7 +171,14 @@ export default function StudentManagementPanel({
                                     <TableRow key={student.id} hover sx={{ opacity: isActiveStatus(student.status) ? 1 : 0.5 }}>
                                         {hasGrades && <TableCell>{student.gradeLabel || '-'}</TableCell>}
                                         <TableCell>{student.classLabel ?? '-'}</TableCell>
-                                        <TableCell sx={{ fontWeight: 600 }}>{student.name}</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>
+                                            {student.name}
+                                            {student.needsRegistration && (
+                                                <Tooltip title="ch2ch 교적 명단에 없음 — 교적 등록이 필요합니다">
+                                                    <Chip label="교적 등록 필요" size="small" color="warning" sx={{ ml: 1 }} />
+                                                </Tooltip>
+                                            )}
+                                        </TableCell>
                                         <TableCell align="center">{student.gender === 'M' ? '남' : '여'}</TableCell>
                                         <TableCell align="center">
                                             <Chip label={student.status} size="small" color={STATUS_COLOR[student.status] ?? 'default'} variant="outlined" />
