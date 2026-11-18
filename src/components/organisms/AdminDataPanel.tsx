@@ -181,12 +181,12 @@ export default function AdminDataPanel({ onDepartmentsChanged }: { onDepartments
             {/* 1. 교적 엑셀 가져오기 */}
             <Paper sx={{ p: 3 }}>
                 <TypographyAtom variant="h6" fontWeight="bold" gutterBottom>
-                    개인정보 엑셀(.xlsx) 가져오기
+                    개인정보 엑셀 가져오기
                 </TypographyAtom>
                 <TypographyAtom variant="body2" color="text.secondary" gutterBottom>
-                    구글 시트(예: 2026 DataBase)를 파일 → 다운로드 → Microsoft Excel(.xlsx)로 받아 올려 주세요. 이름·생년월일
-                    머리글이 있는 시트를 찾아 이름으로 학생과 연결하고, 선생님·생년월일·휴대폰·부모 이름과 연락처·주소·비고를
-                    저장합니다. 이미 저장된 학생은 엑셀 내용으로 바뀝니다.
+                    ch2ch 명단(.xls)이나 구글 시트를 엑셀(.xlsx)로 받은 파일을 올리면, 이미 있는 학생을 이름으로 찾아
+                    선생님·생년월일·휴대폰·부모 이름과 연락처·주소·비고만 저장합니다. 학생 추가·부서 이동은 하지 않으니, 부서
+                    명단을 맞추려면 위의 &quot;교적 명단 동기화&quot;를 쓰세요.
                 </TypographyAtom>
                 <Stack direction="row" spacing={2} alignItems="center" sx={{ mt: 2 }} flexWrap="wrap" useFlexGap>
                     <Button variant="outlined" component="label" startIcon={<UploadFileIcon />}>
@@ -194,7 +194,7 @@ export default function AdminDataPanel({ onDepartmentsChanged }: { onDepartments
                         <input
                             hidden
                             type="file"
-                            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            accept=".xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                             onChange={(e) => {
                                 setFile(e.target.files?.[0] ?? null);
                                 setImportResult(null);

@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { badRequest } from '@/lib/api-utils';
+import { readCh2chRoster } from '@/lib/ch2ch-roster';
 
 // 교적 엑셀(예: "2026 DataBase" 시트를 엑셀로 내려받은 파일) 읽기
 // 머리글 이름으로 열을 찾으므로 열 순서가 바뀌어도 됨 — '이름'과 '생년월일'이 있는 행을 머리글로 봄
@@ -75,12 +76,33 @@ function orNull(raw: string): string | null {
     return raw === '' ? null : raw;
 }
 
+// ch2ch 명단 내려받기 파일(.xls)은 실제로 HTML 표 — 앞부분에 '<'가 있으면 그 형식으로 읽음
+function isHtml(buffer: ArrayBuffer): boolean {
+    const head = new TextDecoder('latin1').decode(buffer.slice(0, 512)).trimStart().toLowerCase();
+    return head.startsWith('<') || head.includes('<html') || head.includes('<table') || head.includes('<head');
+}
+
 export async function readPrivateRows(buffer: ArrayBuffer): Promise<PrivateRow[]> {
+    if (isHtml(buffer)) {
+        return readCh2chRoster(buffer).rows.map((r) => ({
+            name: r.name,
+            gradeDigit: /\d/.exec(r.sub ?? '')?.[0],
+            teacher: r.teacher,
+            birthDate: r.birthDate,
+            phone: r.phone,
+            motherName: r.motherName,
+            motherPhone: r.motherPhone,
+            fatherName: r.fatherName,
+            fatherPhone: r.fatherPhone,
+            address: r.address,
+            note: r.note,
+        }));
+    }
     const workbook = new ExcelJS.Workbook();
     try {
         await workbook.xlsx.load(buffer);
     } catch {
-        badRequest('엑셀(.xlsx) 파일을 읽을 수 없습니다.');
+        badRequest('엑셀 파일을 읽을 수 없습니다. ch2ch 명단(.xls)이나 엑셀(.xlsx) 파일을 올려 주세요.');
     }
 
     for (const sheet of workbook.worksheets) {

@@ -158,7 +158,7 @@ export default function RosterSyncSection({ onApplied }: { onApplied?: () => voi
                     <input
                         hidden
                         type="file"
-                        accept=".xls,.html,.htm"
+                        accept=".xls,application/vnd.ms-excel,.html,.htm"
                         onChange={(e) => {
                             pickFile(e.target.files?.[0] ?? null);
                             e.target.value = '';
