@@ -1,7 +1,7 @@
-// NowKids → ch2ch 출석부(분기) 반영 스크립트
+// 교회학교 출석 → ch2ch 출석부(분기) 반영 스크립트
 // ch2ch "교인관리 > 교육기관 검색 > 출석부(분기)" 화면에서 북마클릿으로 실행됨
-// - 화면의 학생(이름)과 주차별 체크박스를 읽어 NowKids 출석 기록에 맞게 체크/해제
-// - NowKids에 기록이 없는 주는 건드리지 않음
+// - 화면의 학생(이름)과 주차별 체크박스를 읽어 웹 출석 출석 기록에 맞게 체크/해제
+// - 웹 출석에 기록이 없는 주는 건드리지 않음
 // - 바뀐 칸은 색으로 표시만 하고, 저장은 사용자가 ch2ch "저장" 버튼으로 직접 함
 (function () {
     var PANEL_ID = 'nowkids-ch2ch-panel';
@@ -53,7 +53,7 @@
             'font:14px/1.5 sans-serif;color:#222;box-shadow:0 4px 16px rgba(0,0,0,.2)';
         panel.innerHTML =
             '<button type="button" style="float:right;border:0;background:none;font-size:18px;cursor:pointer">×</button>' +
-            '<b style="color:#1976d2">NowKids 출석 반영</b><br>' +
+            '<b style="color:#1976d2">출석 반영</b><br>' +
             html;
         panel.querySelector('button').onclick = function () {
             panel.remove();
@@ -71,6 +71,26 @@
         return names.length ? names.map(escapeHtml).join(', ') : '없음';
     }
 
+    // 폼의 입력값·선택값에서 등록된 ch2ch 기관명을 찾음 (정확히 하나일 때만), 없으면 화면 글자에서 찾음
+    function findOrg(form, orgs) {
+        var values = [];
+        Array.prototype.forEach.call(form.elements, function (el) {
+            if (el.tagName === 'SELECT' && el.selectedIndex >= 0) values.push(el.options[el.selectedIndex].text);
+            if (el.value) values.push(String(el.value));
+        });
+        var inForm = orgs.filter(function (o) {
+            return values.some(function (v) {
+                return v.indexOf(o.org) >= 0;
+            });
+        });
+        if (inForm.length === 1) return inForm[0];
+        var text = form.innerText || '';
+        var inText = orgs.filter(function (o) {
+            return text.indexOf(o.org) >= 0;
+        });
+        return inText.length === 1 ? inText[0] : null;
+    }
+
     async function run() {
         var win = findPresenceWindow(window);
         if (!win) {
@@ -80,13 +100,28 @@
         var doc = win.document;
         var form = doc.forms.form1;
         var year = Number(form.presence_year.value);
-        var subname = form.subname.value; // 예: "4학년"
-        var gradeMatch = /^(\d)/.exec(subname);
-        if (!gradeMatch) {
-            alert('학년을 알 수 없습니다 (' + subname + '). 학년 단위로 검색한 출석부에서 실행해 주세요.');
+        var subname = form.subname ? String(form.subname.value || '').trim() : ''; // 예: "4학년"
+
+        // 화면에 열린 ch2ch 교육기관 → 부서 (Admin 부서 관리의 "ch2ch 기관명"으로 연결)
+        var orgRes = await fetch(API_ORIGIN + '/api/ch2ch?orgs=1');
+        var orgs = await orgRes.json();
+        if (!orgRes.ok || !orgs.length) {
+            alert('ch2ch 기관명이 등록된 부서가 없습니다. Admin → 부서 관리에서 ch2ch 기관명을 넣어 주세요.');
             return;
         }
-        var grade = gradeMatch[1];
+        var org = findOrg(form, orgs);
+        if (!org) {
+            var menu = orgs.map(function (o, i) {
+                return (i + 1) + '. ' + o.name + ' (' + o.org + ')';
+            }).join('\n');
+            var pick = prompt('이 출석부가 어느 부서인지 번호를 입력해 주세요.\n\n' + menu, '');
+            if (pick === null) return;
+            org = orgs[Number(pick) - 1];
+            if (!org) {
+                alert('번호가 올바르지 않습니다.');
+                return;
+            }
+        }
 
         // 출석부 표와 이름 열 위치
         var table = Array.prototype.find.call(form.querySelectorAll('table'), function (t) {
@@ -126,11 +161,12 @@
         }).sort();
 
         var url =
-            API_ORIGIN + '/api/ch2ch?grade=' + grade + '&from=' + dates[0] + '&to=' + dates[dates.length - 1];
+            API_ORIGIN + '/api/ch2ch?org=' + encodeURIComponent(org.org) + '&sub=' + encodeURIComponent(subname) +
+            '&from=' + dates[0] + '&to=' + dates[dates.length - 1];
         var res = await fetch(url);
         var data = await res.json();
         if (!res.ok) {
-            alert('NowKids 데이터를 불러오지 못했습니다: ' + (data && data.error));
+            alert('웹 출석 데이터를 불러오지 못했습니다: ' + (data && data.error));
             return;
         }
 
@@ -139,13 +175,13 @@
             recordMap[r.name + '|' + r.date] = r.status;
         });
 
-        // ch2ch 학생 → NowKids 이름 연결
+        // ch2ch 학생 → 웹 출석 이름 연결
         // 1) 이름이 같으면 연결 2) 남은 학생은 끝의 동명이인 구분 영문 대문자(강세원B 등)를 떼고 비교해
         //    후보가 서로 하나씩일 때만 연결, 여럿이면 누군지 확실하지 않으므로 연결하지 않음
         var ch2chNames = rows.map(function (tr) {
             return cellText(tr.cells[nameIndex]);
         });
-        var matchedName = {}; // ch2ch 이름 → NowKids 이름
+        var matchedName = {}; // ch2ch 이름 → 웹 출석 이름
         var usedNowkids = {};
         ch2chNames.forEach(function (name) {
             if (data.students.indexOf(name) >= 0) {
@@ -194,7 +230,7 @@
                 if (parts[2] !== personId) return;
                 var date = weekDates[Number(parts[1])];
                 var key = name + '|' + date;
-                // NowKids에 기록이 없는 주는 그대로 둠
+                // 웹 출석에 기록이 없는 주는 그대로 둠
                 if (!date || !(key in recordMap)) return;
                 var status = recordMap[key];
                 if (cb.checked === status) return;
@@ -213,7 +249,7 @@
             return !usedNowkids[n];
         });
 
-        // 이 분기에서 NowKids 기록이 있는 주 — 분기 전체를 대조하지만 기록이 있는 주만 바뀜
+        // 이 분기에서 웹 출석 기록이 있는 주 — 분기 전체를 대조하지만 기록이 있는 주만 바뀜
         var datesWithData = dates.filter(function (date) {
             return data.records.some(function (r) {
                 return r.date === date;
@@ -227,26 +263,26 @@
 
         showPanel(
             doc,
-            subname + ' · ' + dates[0] + ' ~ ' + dates[dates.length - 1] + '<br>' +
-                '<b>NowKids 기록이 있는 주</b>: ' + dataWeeksText + '<br>' +
+            escapeHtml(data.department) + ' · ' + dates[0] + ' ~ ' + dates[dates.length - 1] + '<br>' +
+                '<b>웹 출석 기록이 있는 주</b>: ' + dataWeeksText + '<br>' +
                 '<span style="color:#666;font-size:12px">다른 분기는 ch2ch에서 분기를 바꾼 뒤 다시 눌러 주세요.</span><br><br>' +
                 '<span style="background:#c8e6c9;padding:0 4px">출석으로 체크</span> ' + checked + '칸<br>' +
                 '<span style="background:#ffcdd2;padding:0 4px">결석으로 해제</span> ' + unchecked + '칸<br><br>' +
                 (looseMatches.length
-                    ? '<b>이름 표기가 달라 연결한 학생</b> (ch2ch ↔ NowKids)<br>' + nameList(looseMatches) + '<br><br>'
+                    ? '<b>이름 표기가 달라 연결한 학생</b> (ch2ch ↔ 웹 출석)<br>' + nameList(looseMatches) + '<br><br>'
                     : '') +
                 (ambiguous.length
                     ? '<b style="color:#d32f2f">누군지 확실하지 않아 건너뛴 학생</b><br>' + nameList(ambiguous) + '<br><br>'
                     : '') +
                 '<b>ch2ch에만 있는 학생</b> (반영 안 됨)<br>' + nameList(onlyCh2ch) + '<br><br>' +
-                '<b>NowKids에만 있는 학생</b> (반영 안 됨)<br>' + nameList(onlyNowkids) + '<br><br>' +
+                '<b>웹 출석에만 있는 학생</b> (반영 안 됨)<br>' + nameList(onlyNowkids) + '<br><br>' +
                 (checked + unchecked > 0
                     ? '<b style="color:#d32f2f">아직 저장되지 않았습니다.</b> 표시된 칸을 확인한 뒤 ch2ch의 <b>저장</b> 버튼을 눌러 주세요.'
-                    : '바꿀 칸이 없습니다. 이미 NowKids 기록과 같습니다.')
+                    : '바꿀 칸이 없습니다. 이미 웹 출석 기록과 같습니다.')
         );
     }
 
     run().catch(function (err) {
-        alert('NowKids 출석 반영 중 오류: ' + err.message);
+        alert('출석 반영 중 오류: ' + err.message);
     });
 })();

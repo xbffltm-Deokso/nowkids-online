@@ -51,7 +51,7 @@ export default function Ch2chSyncPanel() {
                         onClick={(e) => e.preventDefault()}
                         sx={{ cursor: 'grab' }}
                     >
-                        NowKids 출석 반영
+                        교회학교 출석 반영
                     </Button>
                     <ButtonAtom
                         label={copied ? '복사됨' : '코드 복사'}
@@ -62,7 +62,7 @@ export default function Ch2chSyncPanel() {
                     />
                 </Stack>
                 <TypographyAtom variant="caption" color="text.secondary" component="p" sx={{ mt: 1 }}>
-                    끌어다 놓기가 안 되면: 북마크바에서 우클릭 → 페이지 추가 → 이름은 &quot;NowKids 출석 반영&quot;,
+                    끌어다 놓기가 안 되면: 북마크바에서 우클릭 → 페이지 추가 → 이름은 &quot;교회학교 출석 반영&quot;,
                     URL에는 &quot;코드 복사&quot;로 복사한 내용을 붙여넣기
                 </TypographyAtom>
             </Paper>
@@ -72,16 +72,18 @@ export default function Ch2chSyncPanel() {
                     2. 분기마다 반영하기
                 </TypographyAtom>
                 <TypographyAtom variant="body2" component="ol" sx={{ pl: 2, m: 0 }}>
-                    <li>ch2ch에 로그인 → 교인관리 → 교육기관 검색 → 학년(예: 4학년) 선택 → 출석부(분기)</li>
-                    <li>북마크바의 &quot;NowKids 출석 반영&quot; 클릭</li>
+                    <li>ch2ch에 로그인 → 교인관리 → 교육기관 검색 → 부서(학년이 있으면 학년까지) 선택 → 출석부(분기)</li>
+                    <li>북마크바의 &quot;교회학교 출석 반영&quot; 클릭</li>
                     <li>오른쪽 위 안내창과 색칠된 칸(초록: 출석으로 체크, 빨강: 결석으로 해제)을 확인</li>
-                    <li>ch2ch의 저장 버튼 클릭 → 다음 학년으로 이동해 반복</li>
+                    <li>ch2ch의 저장 버튼 클릭 → 다음 부서·학년으로 이동해 반복</li>
                 </TypographyAtom>
             </Paper>
 
             <Alert severity="info">
-                학년 숫자로 연결됩니다(4.믿음 → 4학년, 5.소망 → 5학년, 6.사랑 → 6학년). 학생은 이름으로 맞추며,
-                NowKids에 기록이 없는 주는 ch2ch 상태를 그대로 둡니다. 저장은 자동으로 하지 않습니다.
+                한 북마클릿으로 모든 부서에 쓸 수 있습니다. 화면의 ch2ch 기관명(예: [덕소]소년부)으로 부서를 찾고, 학년이 있는
+                부서는 학년(예: 4학년)까지 맞춥니다. 기관명은 Admin → 부서 관리에서 부서마다 넣어 주세요. 찾지 못하면 부서를
+                고르는 창이 뜹니다. 학생은 이름으로 맞추며, 웹 출석에 기록이 없는 주는 ch2ch 상태를 그대로 둡니다. 저장은
+                자동으로 하지 않습니다.
             </Alert>
         </Stack>
     );
