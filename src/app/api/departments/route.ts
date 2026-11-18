@@ -19,6 +19,7 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
             ageMin: departments.ageMin,
             ageMax: departments.ageMax,
             hasLink: departments.linkTokenHash,
+            linkToken: departments.linkToken,
             division: divisions.name,
             divisionId: departments.divisionId,
             sortOrder: departments.sortOrder,
@@ -41,6 +42,8 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
                 ageMin: r.ageMin,
                 ageMax: r.ageMax,
                 hasLink: r.hasLink !== null,
+                // 지금 링크를 다시 꺼내 복사할 수 있는지 (원문을 보관하기 전에 만든 링크는 교체해야 함) — 원문은 응답하지 않음
+                linkCopyable: r.linkToken !== null,
                 division: r.division,
             }))
         );
@@ -70,7 +73,9 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
         divisions: divisionRows,
         departments: rows.map((r) => ({
             ...r,
+            linkToken: undefined,
             hasLink: r.hasLink !== null,
+            linkCopyable: r.linkToken !== null,
             archived: r.archivedAt !== null,
             archivedAt: undefined,
             activeStudents: counts.get(r.id) ?? 0,

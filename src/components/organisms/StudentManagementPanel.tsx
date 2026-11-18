@@ -18,6 +18,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import SearchIcon from '@mui/icons-material/Search';
+import TableViewIcon from '@mui/icons-material/TableView';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -32,6 +33,7 @@ import DialogActions from '@mui/material/DialogActions';
 import AttendanceGroupChip from '@/components/atoms/AttendanceGroupChip';
 import DepartmentScopeSelect from '@/components/molecules/DepartmentScopeSelect';
 import StudentFormDialog from '@/components/molecules/StudentFormDialog';
+import ClassSheetDialog from '@/components/organisms/ClassSheetDialog';
 import { useAttendanceGroups } from '@/hooks/useAttendanceGroups';
 import { useStudentManagement, StudentInput } from '@/hooks/useStudentManagement';
 import { isActiveStatus } from '@/utils/studentStatus';
@@ -62,12 +64,13 @@ export default function StudentManagementPanel({
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<Student | null>(null);
     const [confirmDeactivate, setConfirmDeactivate] = useState<Student | null>(null);
+    const [sheetOpen, setSheetOpen] = useState(false);
 
     const scope = useMemo(
         () => ({ departmentId: department.id, gradeId: gradeId || undefined, classId: classId || undefined }),
         [department.id, gradeId, classId]
     );
-    const { students: rawStudents, loading, error, saveStudent, deactivateStudent } = useStudentManagement(scope);
+    const { students: rawStudents, loading, error, refresh, saveStudent, deactivateStudent } = useStudentManagement(scope);
     const groups = useAttendanceGroups(department.id);
 
     const students = useMemo(() => {
@@ -122,6 +125,9 @@ export default function StudentManagementPanel({
                         control={<Switch size="small" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />}
                         label="전학·진급 포함"
                     />
+                    <Button variant="outlined" startIcon={<TableViewIcon />} onClick={() => setSheetOpen(true)}>
+                        반 편성
+                    </Button>
                     <Button
                         variant="contained"
                         startIcon={<PersonAddIcon />}
@@ -223,6 +229,16 @@ export default function StudentManagementPanel({
                 defaultClassId={classId}
                 onClose={() => setDialogOpen(false)}
                 onSave={handleSave}
+            />
+
+            <ClassSheetDialog
+                open={sheetOpen}
+                department={department}
+                onClose={() => setSheetOpen(false)}
+                onApplied={() => {
+                    refresh();
+                    onChanged?.();
+                }}
             />
 
             <Dialog open={!!confirmDeactivate} onClose={() => setConfirmDeactivate(null)}>

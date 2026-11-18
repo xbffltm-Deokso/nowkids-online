@@ -37,8 +37,10 @@ export default function DepartmentLinksSection() {
     };
 
     // 지금 쓰는 링크를 받아 바로 클립보드에 복사
+    // 다른 부서 링크가 화면에 남아 잘못 복사되지 않게, 누르는 순간 이전 링크를 지움
     const copyCurrent = (dep: DepartmentSummary) => {
         setError(null);
+        setIssued(null);
         withPassword(
             async (password) => {
                 const res = await fetch(`/api/admin/departments/${dep.id}/link`, {
@@ -54,13 +56,17 @@ export default function DepartmentLinksSection() {
                     // 클립보드 권한이 없으면 아래 칸에서 직접 복사
                 }
             },
-            (err) => setError(`링크 복사 실패: ${err.message}`)
+            (err) => {
+                setIssued(null);
+                setError(`${dep.name} 링크 복사 실패: ${err.message}`);
+            }
         );
     };
 
     const issue = (dep: DepartmentSummary) => {
         if (dep.hasLink && !confirm(`${dep.name}의 출석 링크를 새로 만들면 지금 링크는 바로 쓸 수 없게 됩니다. 계속할까요?`)) return;
         setError(null);
+        setIssued(null);
         withPassword(
             async (password) => {
                 const res = await fetch(`/api/admin/departments/${dep.id}/link`, {
@@ -72,7 +78,10 @@ export default function DepartmentLinksSection() {
                 show(body.department, body.path);
                 load();
             },
-            (err) => setError(`링크 만들기 실패: ${err.message}`)
+            (err) => {
+                setIssued(null);
+                setError(`${dep.name} 링크 만들기 실패: ${err.message}`);
+            }
         );
     };
 
@@ -110,10 +119,13 @@ export default function DepartmentLinksSection() {
                         <TypographyAtom variant="body2" sx={{ minWidth: 110 }}>{d.name}</TypographyAtom>
                         {d.serviceTime && <Chip size="small" label={d.serviceTime} variant="outlined" />}
                         <Chip size="small" label={d.hasLink ? '링크 있음' : '링크 없음'} color={d.hasLink ? 'success' : 'default'} />
-                        {d.hasLink && (
+                        {d.hasLink && d.linkCopyable && (
                             <Button size="small" variant="outlined" onClick={() => copyCurrent(d)}>
                                 링크 복사
                             </Button>
+                        )}
+                        {d.hasLink && !d.linkCopyable && (
+                            <Chip size="small" color="warning" variant="outlined" label="예전 링크 — 복사하려면 교체 필요" />
                         )}
                         <Button size="small" color={d.hasLink ? 'inherit' : 'primary'} onClick={() => issue(d)}>
                             {d.hasLink ? '새 링크로 교체' : '링크 만들기'}

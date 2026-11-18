@@ -70,13 +70,28 @@ export default function LinkAttendance({ token }: { token: string }) {
         load(null);
     }, [load]);
 
-    // 반 목록: 설정된 반 + 반이 없는 학생이 있으면 "미배정"
+    // 학생이 속한 탭: 반이 있으면 그 반, 없으면 "미배정" — 학년이 있는 부서는 학년별 미배정 (4.믿음 미배정)
+    const tabKeyOf = useCallback(
+        (s: { gradeId: string | null; classId: string | null }) =>
+            s.classId ?? ((roster?.grades.length ?? 0) > 0 ? `${UNASSIGNED}:${s.gradeId ?? ''}` : UNASSIGNED),
+        [roster]
+    );
+
+    // 반 목록: 설정된 반 + 반이 없는 학생이 있으면 (학년별) "미배정"
     const classTabs = useMemo(() => {
         if (!roster) return [];
         const tabs = roster.classes.map((c) => ({ key: c.id, name: c.name }));
-        if (roster.students.some((s) => !s.classId)) tabs.push({ key: UNASSIGNED, name: '미배정' });
+        const unassigned = new Set(roster.students.filter((s) => !s.classId).map((s) => tabKeyOf(s)));
+        if (roster.grades.length === 0) {
+            if (unassigned.size > 0) tabs.push({ key: UNASSIGNED, name: '미배정' });
+        } else {
+            for (const g of [...roster.grades, { id: '', name: '학년 없음' }]) {
+                const key = `${UNASSIGNED}:${g.id}`;
+                if (unassigned.has(key)) tabs.push({ key, name: `${g.name} 미배정` });
+            }
+        }
         return tabs;
-    }, [roster]);
+    }, [roster, tabKeyOf]);
 
     useEffect(() => {
         if (classTabs.length === 0 || classKey) return;
@@ -100,9 +115,7 @@ export default function LinkAttendance({ token }: { token: string }) {
 
     const stored = roster?.attendance ?? {};
     const current = (id: string): Mark | null => marks[id] ?? stored[id] ?? null;
-    const visible = (roster?.students ?? []).filter((s) =>
-        classKey === UNASSIGNED ? !s.classId : s.classId === classKey
-    );
+    const visible = (roster?.students ?? []).filter((s) => tabKeyOf(s) === classKey);
     const changedIds = Object.keys(marks).filter((id) => {
         const m = marks[id];
         const s = stored[id];
@@ -125,10 +138,10 @@ export default function LinkAttendance({ token }: { token: string }) {
             const touchedClasses = new Set<string>([classKey ?? '']);
             for (const id of changedIds) {
                 const st = roster.students.find((s) => s.id === id);
-                if (st) touchedClasses.add(st.classId ?? UNASSIGNED);
+                if (st) touchedClasses.add(tabKeyOf(st));
             }
             const fillAbsent = roster.students
-                .filter((s) => touchedClasses.has(s.classId ?? UNASSIGNED) && !stored[s.id] && !changedIds.includes(s.id))
+                .filter((s) => touchedClasses.has(tabKeyOf(s)) && !stored[s.id] && !changedIds.includes(s.id))
                 .map((s) => s.id);
             const result = await api<{ saved: number; filled: number }>(`/api/link/${token}/attendance`, {
                 method: 'POST',
@@ -260,7 +273,8 @@ export default function LinkAttendance({ token }: { token: string }) {
                 token={token}
                 date={date ?? roster.defaultDate}
                 classes={roster.classes}
-                defaultClassId={classKey && classKey !== UNASSIGNED ? classKey : ''}
+                defaultClassId={classKey && !classKey.startsWith(UNASSIGNED) ? classKey : ''}
+                defaultGradeId={classKey?.startsWith(`${UNASSIGNED}:`) ? classKey.slice(UNASSIGNED.length + 1) : ''}
                 onClose={() => setFriendOpen(false)}
                 onCreated={(name) => {
                     setFriendOpen(false);
@@ -273,13 +287,14 @@ export default function LinkAttendance({ token }: { token: string }) {
 }
 
 function NewFriendDialog({
-    open, token, date, classes, defaultClassId, onClose, onCreated,
+    open, token, date, classes, defaultClassId, defaultGradeId, onClose, onCreated,
 }: {
     open: boolean;
     token: string;
     date: string;
     classes: { id: string; name: string }[];
     defaultClassId: string;
+    defaultGradeId: string; // 학년별 미배정 탭에서 등록하면 그 학년으로
     onClose: () => void;
     onCreated: (name: string) => void;
 }) {
@@ -309,7 +324,15 @@ function NewFriendDialog({
             await api(`/api/link/${token}/new-friend`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: name.trim(), birthDate, gender, classId: classId || null, date, force }),
+                body: JSON.stringify({
+                    name: name.trim(),
+                    birthDate,
+                    gender,
+                    classId: classId || null,
+                    gradeId: classId ? null : defaultGradeId || null,
+                    date,
+                    force,
+                }),
             });
             onCreated(name.trim());
         } catch (err) {

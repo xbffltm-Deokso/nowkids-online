@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { attendanceRecords, classes, students } from '@/lib/schema';
+import { attendanceRecords, classes, grades, students } from '@/lib/schema';
 import { requireDate, withErrorHandling } from '@/lib/api-utils';
 import { departmentFromToken } from '@/lib/department-link';
 import { getSundayOfCurrentWeek } from '@/utils/dateUtils';
@@ -16,17 +16,28 @@ export const GET = withErrorHandling(async (req: NextRequest, { params }: { para
     const dateParam = req.nextUrl.searchParams.get('date');
     const date = dateParam ? requireDate(dateParam, 'date') : getSundayOfCurrentWeek();
 
-    const [classRows, studentRows] = await Promise.all([
+    const [classRows, studentRows, gradeRows] = await Promise.all([
         db
             .select({ id: classes.id, name: classes.name })
             .from(classes)
             .where(and(eq(classes.departmentId, dep.id), isNull(classes.archivedAt)))
             .orderBy(asc(classes.sortOrder), asc(classes.name)),
         db
-            .select({ id: students.id, name: students.name, classId: students.classId, status: students.status })
+            .select({
+                id: students.id,
+                name: students.name,
+                gradeId: students.gradeId,
+                classId: students.classId,
+                status: students.status,
+            })
             .from(students)
             .where(and(eq(students.departmentId, dep.id), inArray(students.status, ACTIVE)))
             .orderBy(asc(students.name)),
+        db
+            .select({ id: grades.id, name: grades.name })
+            .from(grades)
+            .where(and(eq(grades.departmentId, dep.id), isNull(grades.archivedAt)))
+            .orderBy(asc(grades.sortOrder)),
     ]);
 
     const records = studentRows.length
@@ -40,6 +51,7 @@ export const GET = withErrorHandling(async (req: NextRequest, { params }: { para
         department: { name: dep.name },
         date,
         defaultDate: getSundayOfCurrentWeek(),
+        grades: gradeRows,
         classes: classRows,
         students: studentRows,
         attendance: Object.fromEntries(records.map((r) => [r.studentId, { status: r.status, reason: r.reason }])),

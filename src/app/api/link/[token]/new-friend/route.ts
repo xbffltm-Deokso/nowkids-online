@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { attendanceChanges, attendanceRecords, classes, students, studentPrivate } from '@/lib/schema';
+import { attendanceChanges, attendanceRecords, classes, grades, students, studentPrivate } from '@/lib/schema';
 import {
     ApiError,
     asObject,
@@ -28,13 +28,22 @@ export const POST = withErrorHandling(async (req: NextRequest, { params }: { par
     const date = requireDate(body.date, 'date');
     const classId = typeof body.classId === 'string' && body.classId ? body.classId : null;
 
+    let gradeId = typeof body.gradeId === 'string' && body.gradeId ? body.gradeId : null;
+    const gradeRows = await db
+        .select({ id: grades.id, name: grades.name })
+        .from(grades)
+        .where(and(eq(grades.departmentId, dep.id), isNull(grades.archivedAt)));
+    if (gradeId && !gradeRows.some((g) => g.id === gradeId)) throw new ApiError(400, '이 부서의 학년이 아닙니다.');
     if (classId) {
         const [cls] = await db
-            .select({ id: classes.id })
+            .select({ id: classes.id, name: classes.name })
             .from(classes)
             .where(and(eq(classes.id, classId), eq(classes.departmentId, dep.id)));
         if (!cls) throw new ApiError(400, '이 부서의 반이 아닙니다.');
+        // 반 이름이 학년으로 시작하면 (4.믿음 1반) 그 학년으로
+        gradeId ??= gradeRows.find((g) => cls.name.startsWith(`${g.name} `))?.id ?? null;
     }
+    const gradeName = gradeRows.find((g) => g.id === gradeId)?.name;
 
     // 같은 부서에 같은 이름이 있으면 한 번 확인 (force로 그래도 등록 가능)
     if (body.force !== true) {
@@ -52,13 +61,14 @@ export const POST = withErrorHandling(async (req: NextRequest, { params }: { par
         db.insert(students).values({
             id,
             // 이전 화면과의 호환용 (부서 구조로 옮긴 뒤 제거 예정)
-            grade: dep.name,
+            grade: gradeName ?? dep.name,
             classNum: 0,
             number: 0,
             name,
             gender,
             status: '새친구',
             departmentId: dep.id,
+            gradeId,
             classId,
             source: 'link',
         }),

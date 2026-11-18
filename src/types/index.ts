@@ -91,6 +91,7 @@ export interface DepartmentSummary {
     ageMin: number | null;
     ageMax: number | null;
     hasLink: boolean;
+    linkCopyable: boolean; // 지금 링크를 다시 복사할 수 있음 (예전 방식 링크는 교체 필요)
     division: string;
 }
 
@@ -99,8 +100,9 @@ export interface LinkRoster {
     department: { name: string };
     date: string;
     defaultDate: string;
+    grades: { id: string; name: string }[];
     classes: { id: string; name: string }[];
-    students: { id: string; name: string; classId: string | null; status: string }[];
+    students: { id: string; name: string; gradeId: string | null; classId: string | null; status: string }[];
     attendance: Record<string, { status: boolean; reason: string | null }>;
 }
 
