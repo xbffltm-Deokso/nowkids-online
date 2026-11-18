@@ -7,7 +7,6 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import { Student, AttendanceRecord, AttendanceStatus } from '@/types';
 import StudentRow from '@/components/molecules/StudentRow';
-import TypographyAtom from '@/components/atoms/TypographyAtom';
 
 interface AttendanceTableProps {
     students: Student[];
@@ -19,21 +18,21 @@ interface AttendanceTableProps {
 
 export default function AttendanceTable({ students, attendance, onStatusChange, onReasonChange, onRemoveStudent }: AttendanceTableProps) {
     return (
-        <TableContainer component={Paper} elevation={2}>
+        <TableContainer component={Paper}>
             <Table aria-label="attendance table">
                 <TableHead>
-                    <TableRow sx={{ backgroundColor: 'primary.light' }}>
+                    <TableRow>
                         <TableCell>
-                            <TypographyAtom color="white" fontWeight="bold">이름</TypographyAtom>
+                            이름
                         </TableCell>
                         <TableCell align="center">
-                            <TypographyAtom color="white" fontWeight="bold">출석</TypographyAtom>
+                            출석
                         </TableCell>
                         <TableCell align="center">
-                            <TypographyAtom color="white" fontWeight="bold">사유</TypographyAtom>
+                            사유
                         </TableCell>
                         <TableCell align="center" sx={{ width: 80 }}>
-                            <TypographyAtom color="white" fontWeight="bold">관리</TypographyAtom>
+                            관리
                         </TableCell>
                     </TableRow>
                 </TableHead>

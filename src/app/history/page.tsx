@@ -119,12 +119,12 @@ export default function HistoryPage() {
             ) : (
                 <TableContainer component={Paper}>
                     <Table>
-                        <TableHead sx={{ bgcolor: 'primary.main' }}>
+                        <TableHead>
                             <TableRow>
-                                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>날짜</TableCell>
-                                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>이름</TableCell>
-                                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>상태</TableCell>
-                                <TableCell sx={{ color: 'white', fontWeight: 'bold' }}>사유</TableCell>
+                                <TableCell>날짜</TableCell>
+                                <TableCell>이름</TableCell>
+                                <TableCell>상태</TableCell>
+                                <TableCell>사유</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>

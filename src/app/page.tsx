@@ -33,26 +33,30 @@ export default function HomePage() {
     }, [grades, selectedGrade]);
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Container maxWidth="md" sx={{ py: { xs: 3, sm: 5 } }}>
+            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 2 }}>
                 <Box>
-                    <TypographyAtom variant="h4" component="h1" fontWeight="bold" color="primary">
-                        출석체크 시스템
+                    <TypographyAtom variant="overline" color="text.secondary" sx={{ lineHeight: 1.4 }}>
+                        덕소교회 교회학교 · 소년부
+                    </TypographyAtom>
+                    <TypographyAtom variant="h5" component="h1">
+                        출석 체크
                     </TypographyAtom>
                     <TypographyAtom variant="body2" color="text.secondary">
                         {new Date(date).toLocaleDateString('ko-KR', {
                             year: 'numeric',
                             month: 'long',
                             day: 'numeric',
+                            weekday: 'short',
                         })}
                     </TypographyAtom>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 1 }}>
+                <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
                     <Link href="/history" passHref style={{ textDecoration: 'none' }}>
-                        <ButtonAtom label="출석 기록" variant="outlined" color="primary" />
+                        <ButtonAtom label="출석 기록" variant="outlined" color="primary" sx={{ whiteSpace: 'nowrap' }} />
                     </Link>
                     <Link href="/admin" passHref style={{ textDecoration: 'none' }}>
-                        <ButtonAtom label="Admin" variant="contained" color="secondary" />
+                        <ButtonAtom label="관리" variant="contained" color="primary" sx={{ whiteSpace: 'nowrap' }} />
                     </Link>
                 </Box>
             </Box>

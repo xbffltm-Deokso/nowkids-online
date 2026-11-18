@@ -50,7 +50,7 @@ export default function AttendanceForm({
     };
 
     return (
-        <Box component={Paper} elevation={3} sx={{ p: 3 }}>
+        <Box component={Paper} sx={{ p: { xs: 2, sm: 3 } }}>
             <Stack spacing={3}>
                 <GradeClassSelect
                     grades={grades}
