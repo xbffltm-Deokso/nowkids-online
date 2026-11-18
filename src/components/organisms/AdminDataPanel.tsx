@@ -27,12 +27,14 @@ import { isActiveStatus } from '@/utils/studentStatus';
 import { useGrades } from '@/hooks/useGrades';
 import { AdminLog, PrivateImportResult, PromoteResult } from '@/types';
 import DepartmentLinksSection from '@/components/organisms/DepartmentLinksSection';
+import DepartmentManagerSection from '@/components/organisms/DepartmentManagerSection';
 
 const ACTION_LABEL: Record<AdminLog['action'], string> = {
     import: '가져오기',
     export: '추출',
     promote: '진급 처리',
     link: '출석 링크',
+    department: '부서 관리',
 };
 
 function NameList({ title, names, severity }: { title: string; names: string[]; severity: 'info' | 'warning' }) {
@@ -51,6 +53,7 @@ export default function AdminDataPanel() {
     const [logs, setLogs] = useState<AdminLog[]>([]);
 
     const [file, setFile] = useState<File | null>(null);
+    const [deptVersion, setDeptVersion] = useState(0);
     const [importing, setImporting] = useState(false);
     const [importResult, setImportResult] = useState<PrivateImportResult | null>(null);
 
@@ -175,7 +178,8 @@ export default function AdminDataPanel() {
 
             {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
 
-            <DepartmentLinksSection />
+            <DepartmentManagerSection onChanged={() => setDeptVersion((v) => v + 1)} />
+            <DepartmentLinksSection key={deptVersion} />
 
             {/* 1. 교적 엑셀 가져오기 */}
             <Paper sx={{ p: 3 }}>

@@ -55,7 +55,7 @@ export interface PrivateImportResult {
 
 export interface AdminLog {
     id: number;
-    action: 'import' | 'export' | 'promote' | 'link';
+    action: 'import' | 'export' | 'promote' | 'link' | 'department';
     summary: string;
     count: number;
     createdAt: string;
@@ -87,4 +87,28 @@ export interface LinkRoster {
     classes: { id: string; name: string }[];
     students: { id: string; name: string; classId: string | null; status: string }[];
     attendance: Record<string, { status: boolean; reason: string | null }>;
+}
+
+// 부서 관리 화면 데이터 (GET /api/departments?detail=1)
+export interface DepartmentDetail {
+    id: string;
+    name: string;
+    kind: 'school' | 'report_only';
+    serviceTime: string | null;
+    ageMin: number | null;
+    ageMax: number | null;
+    hasLink: boolean;
+    division: string;
+    divisionId: string;
+    sortOrder: number;
+    nextDepartmentId: string | null;
+    ch2chOrgName: string | null;
+    archived: boolean;
+    activeStudents: number;
+    classes: { id: string; name: string }[];
+}
+
+export interface DepartmentOverview {
+    divisions: { id: string; name: string }[];
+    departments: DepartmentDetail[];
 }

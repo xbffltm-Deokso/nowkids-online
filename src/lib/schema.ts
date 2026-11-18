@@ -150,7 +150,7 @@ export const adminLogs = pgTable(
     'admin_logs',
     {
         id: serial('id').primaryKey(),
-        action: text('action').notNull(), // 'import' | 'export' | 'promote'
+        action: text('action').notNull(), // 'import' | 'export' | 'promote' | 'link' | 'department'
         summary: text('summary').notNull(),
         count: integer('count').notNull(),
         ip: text('ip').notNull(),
