@@ -45,7 +45,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     if (roster.rows.length === 0) badRequest('명단에 학생이 없습니다.');
 
     // 파일 이름의 기관명([덕소]소년부)이 고른 부서와 다르면 경고
-    const orgInName = /\[[^\]]+\][^\s_.]+?(?=리스트|명단|\.|_|\s|$)/.exec(file.name)?.[0] ?? null;
+    const orgInName = /\[[^\]]+\][^\s_.]+?(?=리스트|명단|요람|\.|_|\s|$)/.exec(file.name)?.[0] ?? null;
     const orgWarning =
         orgInName && dep.ch2chOrgName && orgInName !== dep.ch2chOrgName
             ? `파일 이름의 기관(${orgInName})과 고른 부서의 ch2ch 기관명(${dep.ch2chOrgName})이 다릅니다.`
@@ -135,6 +135,8 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
         ambiguous,
         duplicates,
         ageWarnings,
+        // 명단에서 성별을 알 수 없는 새 학생 (요람에서 학생이 세대주인 경우 등) — 남으로 저장되니 확인 필요
+        genderUnknown: added.filter((r) => !r.gender).map((r) => ({ name: r.name, sub: r.sub })),
         applied: false,
     };
 

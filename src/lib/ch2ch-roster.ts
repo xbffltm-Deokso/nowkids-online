@@ -104,12 +104,8 @@ export function readCh2chRoster(buffer: ArrayBuffer): Roster {
 
     const headerIndex = rows.findIndex((r) => r.map(text).includes('이름') && r.map(text).includes('반'));
     if (headerIndex < 0) {
-        // 요람(가정별 카드·사진) 형식은 표 구조가 달라 읽지 않음
-        if (/seq_mark|pswp|요람/.test(html)) {
-            badRequest(
-                "'요람' 형식 파일입니다. ch2ch 교육기관 화면에서 '리스트(명단)'로 내려받은 파일을 올려 주세요. (예: 2026년[덕소]고등부리스트.xls)"
-            );
-        }
+        // 요람(세대별 카드·사진) 형식
+        if (/학년반\s*:/.test(html)) return readYoram(html);
         badRequest("명단에서 '이름'·'반' 머리글을 찾을 수 없습니다. ch2ch 교육기관 '리스트'로 내려받은 파일인지 확인해 주세요.");
     }
     const header = rows[headerIndex].map(text);
@@ -157,6 +153,75 @@ export function readCh2chRoster(buffer: ArrayBuffer): Roster {
             note: note || null,
         });
     }
+    return { rows: out, teachersSkipped };
+}
+
+// ── 요람 형식 ──
+// 구조: "학년반 : 1학년" 묶음(위에 담임 카드) 아래로 세대(가정) 줄이 이어짐
+// 세대 줄: [사진 + 학생 이름] [등록일·집전화·휴대폰·학교,직장·주소] [관계 | 이름 | 생년월일 | 직분 | 신급 | 목장 | 휴대폰]
+// 가족 열은 <br>로 구분된 세대원 목록 — 사진 아래 이름이 이 부서 학생
+const MALE = /^(자|아들|손자|남동생|형|오빠|조카)$/;
+const FEMALE = /^(녀|딸|손녀|여동생|누나|언니)$/;
+const PERSON_ROW = /<tr[^>]*align=["']?center["']?[^>]*valign=["']?top["']?[^>]*>/i;
+
+function yoramLists(row: string): string[][] {
+    return [...row.matchAll(/<td[^>]*class=['"]?ps-\d pe-\d['"]?[^>]*>((?:(?!<\/td>)[\s\S])*?<br\s*\/?>)\s*<\/td>/gi)].map((m) =>
+        m[1].split(/<br\s*\/?>/i).slice(0, -1).map((v) => text(v))
+    );
+}
+
+function yoramField(row: string, label: string): string {
+    const at = row.indexOf(`>${label}</td>`);
+    if (at < 0) return '';
+    return text(/<td[^>]*>([\s\S]*?)<\/td>/i.exec(row.slice(at + label.length + 6))?.[1] ?? '');
+}
+
+function readYoram(html: string): Roster {
+    const body = html.slice(Math.max(0, html.search(/<body/i)));
+    const segments = body.split(/fa-folder/).slice(1);
+    const out: RosterRow[] = [];
+    let teachersSkipped = 0;
+
+    for (const seg of segments) {
+        const sub = /학년반\s*:\s*([^\s<]+)/.exec(seg.slice(0, 400).replace(/<[^>]+>/g, ' '))?.[1] ?? null;
+        const [head, ...people] = seg.split(PERSON_ROW);
+        // 담임 카드: 이름 칸 값들
+        const teachers = [...head.matchAll(/>\s*이름\s*<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/gi)].map((m) => text(m[1])).filter(Boolean);
+        teachersSkipped += teachers.length;
+
+        for (const row of people) {
+            const photoCell = row.split(/<\/table>\s*<\/td>/i)[0];
+            const name = text(photoCell).split(' ').pop() ?? '';
+            const lists = yoramLists(row);
+            if (!name || lists.length < 3) continue;
+            const [relations, names, births, , faiths = [], , phones = []] = lists;
+            const i = names.indexOf(name);
+            if (i < 0) continue;
+            const relation = relations[i] ?? '';
+            const family = names.map((n, k) => ({ name: n, relation: relations[k] ?? '', phone: toPhone(phones[k] ?? '') }));
+            const others = family.filter((_, k) => k !== i);
+            const mother = others.find((p) => MOTHER.test(p.relation));
+            const father = others.find((p) => p !== mother && FATHER.test(p.relation));
+            const address = text(/<td[^>]*colspan[^>]*class=['"]?text-start[^>]*>([\s\S]*?)<\/td>/i.exec(row)?.[1] ?? '');
+            const school = yoramField(row, '학교,직장');
+            const note = [faiths[i], school].filter(Boolean).join(' · ');
+            out.push({
+                name,
+                sub,
+                gender: MALE.test(relation) ? 'M' : FEMALE.test(relation) ? 'F' : null,
+                birthDate: toDate(births[i] ?? ''),
+                teacher: teachers.join(', ') || null,
+                phone: toPhone(phones[i] ?? ''),
+                address: address || null,
+                motherName: mother?.name ?? null,
+                motherPhone: mother?.phone ?? null,
+                fatherName: father?.name ?? null,
+                fatherPhone: father?.phone ?? null,
+                note: note || null,
+            });
+        }
+    }
+    if (out.length === 0) badRequest('요람에서 학생을 찾지 못했습니다. ch2ch 교육기관 요람을 그대로 내려받은 파일인지 확인해 주세요.');
     return { rows: out, teachersSkipped };
 }
 

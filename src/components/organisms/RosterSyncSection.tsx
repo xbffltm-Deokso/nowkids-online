@@ -39,6 +39,7 @@ interface SyncResult {
     ambiguous: Item[];
     duplicates: Item[];
     ageWarnings: Item[];
+    genderUnknown: Item[];
     applied: boolean;
 }
 
@@ -84,7 +85,10 @@ export default function RosterSyncSection({ onApplied }: { onApplied?: () => voi
         setFile(f);
         setResult(null);
         if (!f) return;
-        const hit = departments.find((d) => d.ch2chOrgName && f.name.includes(d.ch2chOrgName));
+        // ch2ch 기관명([덕소]소년부)이 있으면 그것으로, 없으면 파일 이름에 든 가장 긴 부서 이름으로 (예: 고등부요람.xls)
+        const hit =
+            departments.find((d) => d.ch2chOrgName && f.name.includes(d.ch2chOrgName)) ??
+            [...departments].sort((a, b) => b.name.length - a.name.length).find((d) => f.name.includes(d.name));
         if (hit) setDepartmentId(hit.id);
     };
 
@@ -129,7 +133,7 @@ export default function RosterSyncSection({ onApplied }: { onApplied?: () => voi
                 교적 명단 동기화 (ch2ch)
             </TypographyAtom>
             <TypographyAtom variant="body2" color="text.secondary" gutterBottom>
-                ch2ch → 교육기관 검색 → 부서 → 명단 내려받기로 받은 <b>.xls</b> 파일을 그대로 올려 주세요. 먼저 바뀔 내용을 보여
+                ch2ch 교육기관에서 내려받은 <b>요람</b> 또는 <b>리스트</b> 파일(.xls)을 그대로 올려 주세요. 먼저 바뀔 내용을 보여
                 드리고, 확인 후 반영합니다. 명단에 없는 학생은 지우지 않고 &quot;교적 등록 필요&quot;로 표시합니다. 같은 나이라도
                 부서는 명단 기준으로 정해지며, 대상 나이를 벗어난 학생은 따로 알려 드립니다.
             </TypographyAtom>
@@ -225,6 +229,7 @@ export default function RosterSyncSection({ onApplied }: { onApplied?: () => voi
                     <Names title="다른 부서에서 옮겨 옴" items={result.moved} severity="warning" hint="이 부서로 옮기고 반은 미배정 (괄호 뒤는 지금 학년)" />
                     <Names title="교적 등록 필요" items={result.missing} severity="warning" hint="앱의 이 부서에는 있는데 명단에 없음 — 지우지 않고 표시만" />
                     <Names title="이름 표기가 달라 연결" items={result.looseMatches} severity="info" hint="명단 이름 → 앱 이름" />
+                    <Names title="성별 확인 필요" items={result.genderUnknown} severity="warning" hint="명단으로 성별을 알 수 없어 '남'으로 저장됩니다 — 반영 후 학생 관리에서 고쳐 주세요" />
                     <Names title="대상 나이를 벗어남" items={result.ageWarnings} severity="warning" hint="세는 나이 기준 — 부서를 다시 확인해 주세요" />
                     <Names title="누군지 확실하지 않아 건너뜀" items={result.ambiguous} severity="warning" hint="같은 이름이 여럿 — 학생 관리에서 직접 확인" />
                     <Names title="명단에 두 번 나와 건너뜀" items={result.duplicates} severity="warning" />
