@@ -22,6 +22,20 @@
       "when": 1791599795321,
       "tag": "0002_normal_sprite",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794979450786,
+      "tag": "0003_departments",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794979467105,
+      "tag": "0004_backfill_departments",
+      "breakpoints": true
     }
   ]
 }
