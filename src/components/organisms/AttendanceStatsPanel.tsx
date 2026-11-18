@@ -25,6 +25,7 @@ import TypographyAtom from '@/components/atoms/TypographyAtom';
 import { useAdminAttendance } from '@/hooks/useAdminAttendance';
 import AttendanceGroupSection from '@/components/organisms/AttendanceGroupSection';
 import { isActiveStatus } from '@/utils/studentStatus';
+import { DepartmentDetail, Student } from '@/types';
 import {
     formatDateShort,
     getQuarter,
@@ -43,7 +44,7 @@ interface Count {
 interface WeekStat {
     date: string;
     total: Count;
-    groups: Record<string, Count>; // 학년 또는 "학년|반" → 인원
+    groups: Record<string, Count>; // 학년 또는 "학년 반" → 인원
     lowRecord: boolean;
 }
 
@@ -58,22 +59,35 @@ function emptyCount(): Count {
     return { present: 0, recorded: 0 };
 }
 
-export default function AttendanceStatsPanel() {
+// 표·그래프의 열 묶음 이름: 학년별(학년 없는 부서는 부서 전체) 또는 반별
+function groupKeyOf(student: Student, byClass: boolean): string {
+    const grade = student.gradeLabel ?? student.grade;
+    if (!byClass) return grade || '전체';
+    return `${grade} ${student.classLabel ?? `${student.classNum}반`}`.trim();
+}
+
+export default function AttendanceStatsPanel({ department }: { department: DepartmentDetail }) {
     const today = getSundayOfCurrentWeek();
     const [year, setYear] = useState(Number(today.slice(0, 4)));
     const [period, setPeriod] = useState<Period>(getQuarter(today));
-    const [byClass, setByClass] = useState(false);
+    // 학년이 없는 부서는 처음부터 반별로
+    const [byClass, setByClass] = useState(department.grades.length === 0 && department.classes.length > 0);
 
-    const { rows, loading, error } = useAdminAttendance('all', 0);
+    const scope = useMemo(() => ({ departmentId: department.id }), [department.id]);
+    const { rows, loading, error } = useAdminAttendance(scope);
 
     // 표·그래프의 열 묶음: 학년별 또는 학년·반별
     const groupKeys = useMemo(() => {
-        const keys = new Set<string>();
+        // 학년·반 표시 순서(order)대로
+        const keys = new Map<string, number>();
         for (const { student } of rows) {
             if (!isActiveStatus(student.status)) continue;
-            keys.add(byClass ? `${student.grade}|${student.classNum}` : student.grade);
+            const key = groupKeyOf(student, byClass);
+            keys.set(key, Math.min(keys.get(key) ?? Infinity, student.order ?? 0));
         }
-        return Array.from(keys).sort((a, b) => a.localeCompare(b, 'ko-KR', { numeric: true }));
+        return Array.from(keys.entries())
+            .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0], 'ko-KR', { numeric: true }))
+            .map(([key]) => key);
     }, [rows, byClass]);
 
     const enrolled = useMemo(() => rows.filter((r) => isActiveStatus(r.student.status)).length, [rows]);
@@ -91,7 +105,7 @@ export default function AttendanceStatsPanel() {
             for (const { student, records } of rows) {
                 const record = records[date];
                 if (!record) continue;
-                const key = byClass ? `${student.grade}|${student.classNum}` : student.grade;
+                const key = groupKeyOf(student, byClass);
                 groups[key] ??= emptyCount();
                 groups[key].recorded++;
                 total.recorded++;
@@ -124,7 +138,7 @@ export default function AttendanceStatsPanel() {
     }, [weeks]);
 
     const maxPresent = Math.max(1, ...weeks.map((w) => w.total.present));
-    const groupLabel = (key: string) => (byClass ? key.replace('|', ' ') + '반' : key);
+    const groupLabel = (key: string) => key;
 
     if (loading) {
         return (
@@ -294,10 +308,10 @@ export default function AttendanceStatsPanel() {
                 </Table>
             </TableContainer>
             <TypographyAtom variant="caption" color="text.secondary">
-                칸의 숫자는 출석 인원/기록 인원이며, 출석률은 그 주에 기록이 있는 학생 중 출석한 비율입니다. 재적은 현재 재학·휴학 학생 수입니다.
+                칸의 숫자는 출석 인원/기록 인원이며, 출석률은 그 주에 기록이 있는 학생 중 출석한 비율입니다. 재적은 현재 재학·휴학·새친구 학생 수입니다.
             </TypographyAtom>
 
-            <AttendanceGroupSection rows={rows} />
+            <AttendanceGroupSection rows={rows} departmentId={department.id} />
         </Stack>
     );
 }

@@ -33,13 +33,13 @@ export type PendingChange = AttendanceChange;
 interface AttendanceMatrixProps {
     rows: AttendanceMatrixRow[];
     dates: string[];
-    grade: string;
-    classNum: number;
+    scopeLabel: string; // CSV 파일 이름에 쓰는 부서·학년·반
+    showClass: boolean; // 여러 반을 함께 볼 때 학년·반 열과 필터 표시
     onSaveBatch?: (changes: Record<string, AttendanceChange>, adminPassword?: string) => Promise<boolean>;
 }
 
-function StatusCell({ 
-    record, 
+function StatusCell({
+    record,
     showReason = false,
     isPending = false,
     rowIndex,
@@ -48,7 +48,7 @@ function StatusCell({
     date,
     currentStatus,
     onToggle
-}: { 
+}: {
     record: { status: boolean; reason?: string | null } | undefined;
     showReason?: boolean;
     isPending?: boolean;
@@ -71,7 +71,7 @@ function StatusCell({
             if (e.key === 'ArrowDown') nextRow++;
             if (e.key === 'ArrowLeft') nextCol--;
             if (e.key === 'ArrowRight') nextCol++;
-            
+
             const nextCell = document.querySelector(`[data-cell="${nextRow}-${nextCol}"]`) as HTMLElement;
             if (nextCell) nextCell.focus();
         }
@@ -81,14 +81,14 @@ function StatusCell({
     const reason = record?.reason;
 
     return (
-        <Box 
+        <Box
             data-cell={`${rowIndex}-${colIndex}`}
             tabIndex={0}
             onClick={() => onToggle(studentId, date, currentStatus)}
             onKeyDown={handleKeyDown}
-            sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
+            sx={{
+                display: 'flex',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
                 width: '100%',
@@ -132,28 +132,36 @@ function StatusCell({
     );
 }
 
+
+function gradeOf(row: AttendanceMatrixRow): string {
+    return row.student.gradeLabel ?? row.student.grade;
+}
+
+function classOf(row: AttendanceMatrixRow): string {
+    return row.student.classLabel ?? `${row.student.classNum}반`;
+}
+
 function downloadCSV(
-    rows: AttendanceMatrixRow[], 
-    dates: string[], 
-    grade: string, 
-    classNum: number,
+    rows: AttendanceMatrixRow[],
+    dates: string[],
+    scopeLabel: string,
+    showClass: boolean,
     pendingChanges: Record<string, PendingChange>
 ) {
-    const showClass = classNum === 0;
     const baseHeader = showClass ? ['학년', '반', '이름'] : ['이름'];
     const header = [...baseHeader, ...dates.map(formatDateShort), '출석', '결석', '출석률'].join(',');
     const dataRows = rows.map((row) => {
         const baseCells = showClass
-            ? [row.student.grade, row.student.classNum, row.student.name]
+            ? [gradeOf(row), classOf(row), row.student.name]
             : [row.student.name];
-            
+
         const cells = [
             ...baseCells,
             ...dates.map((d) => {
                 const key = `${row.student.id}_${d}`;
                 const pending = pendingChanges[key];
                 const s = pending ? (pending.status !== undefined ? { status: pending.status, reason: pending.reason } : undefined) : row.records[d];
-                
+
                 if (s === undefined) return '-';
                 return s.status ? 'O' : s.reason ? `X(${s.reason})` : 'X';
             }),
@@ -171,23 +179,22 @@ function downloadCSV(
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `출석_${grade}_${classNum === 0 ? '전체' : `${classNum}반`}.csv`;
+    a.download = `출석_${scopeLabel}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }
 
-export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveBatch }: AttendanceMatrixProps) {
-    const stickyCell = { position: 'sticky' as const, background: 'white', zIndex: 1 };
-    const showClass = classNum === 0;
-    const nameLeft = showClass ? 48 : 0;
+export default function AttendanceMatrix({ rows, dates, scopeLabel, showClass, onSaveBatch }: AttendanceMatrixProps) {
+    const stickyCell = { position: 'sticky' as const, bgcolor: 'background.paper', zIndex: 1 };
+    const nameLeft = showClass ? 72 : 0;
 
     // 1. 고급 필터 제어 상태
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedGrades, setSelectedGrades] = useState<string[]>([]);
-    const [selectedClasses, setSelectedClasses] = useState<number[]>([]);
+    const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
     const [sortBy, setSortBy] = useState<string>('default');
     const [sortHistory, setSortHistory] = useState<string[]>(['default']);
-    
+
     // 2. 임시 저장 상태 (Batch Save)
     const [pendingChanges, setPendingChanges] = useState<Record<string, PendingChange>>({});
     const [isSaving, setIsSaving] = useState(false);
@@ -199,18 +206,18 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
     // 데이터 변경 시 pending 비우기
     useEffect(() => {
         setPendingChanges({});
-    }, [grade, classNum, dates]);
+    }, [scopeLabel, dates]);
 
     const availableGrades = useMemo(() => {
         const set = new Set<string>();
-        rows.forEach((r) => set.add(r.student.grade));
-        return Array.from(set).sort();
+        rows.forEach((r) => set.add(gradeOf(r)));
+        return Array.from(set);
     }, [rows]);
 
     const availableClasses = useMemo(() => {
-        const set = new Set<number>();
-        rows.forEach((r) => set.add(r.student.classNum));
-        return Array.from(set).sort((a, b) => a - b);
+        const set = new Set<string>();
+        rows.forEach((r) => set.add(classOf(r)));
+        return Array.from(set);
     }, [rows]);
 
     useEffect(() => { setSelectedGrades(availableGrades); }, [availableGrades]);
@@ -224,8 +231,8 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                     const name = row.student.name.toLowerCase().replace(/\s+/g, '');
                     if (!name.includes(term)) return false;
                 }
-                if (selectedGrades.length > 0 && !selectedGrades.includes(row.student.grade)) return false;
-                if (selectedClasses.length > 0 && !selectedClasses.includes(row.student.classNum)) return false;
+                if (selectedGrades.length > 0 && !selectedGrades.includes(gradeOf(row))) return false;
+                if (selectedClasses.length > 0 && !selectedClasses.includes(classOf(row))) return false;
                 return true;
             })
             .sort((a, b) => {
@@ -241,8 +248,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                         case 'attendanceAsc': return rateA - rateB;
                         case 'default':
                         default:
-                            if (a.student.grade !== b.student.grade) return a.student.grade.localeCompare(b.student.grade);
-                            if (a.student.classNum !== b.student.classNum) return a.student.classNum - b.student.classNum;
+                            if ((a.student.order ?? 0) !== (b.student.order ?? 0)) return (a.student.order ?? 0) - (b.student.order ?? 0);
                             return a.student.name.localeCompare(b.student.name, 'ko-KR');
                     }
                 };
@@ -261,7 +267,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
 
         setPendingChanges((prev) => {
             const next = { ...prev };
-            
+
             let nextStatus: boolean | undefined = undefined;
             if (currentStatus === undefined) nextStatus = true;
             else if (currentStatus === true) nextStatus = false;
@@ -352,7 +358,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                     </Grid>
                     {showClass && (
                         <>
-                            <Grid item xs={6} sm={2.5}>
+                            <Grid item xs={6} sm={2.5} sx={{ display: availableGrades.length > 1 ? undefined : 'none' }}>
                                 <FormControl fullWidth size="small">
                                     <InputLabel>학년 필터</InputLabel>
                                     <Select
@@ -377,14 +383,14 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                                     <Select
                                         multiple
                                         value={selectedClasses}
-                                        onChange={(e) => setSelectedClasses(typeof e.target.value === 'string' ? e.target.value.split(',').map(Number) : e.target.value as number[])}
+                                        onChange={(e) => setSelectedClasses(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
                                         input={<OutlinedInput label="반 필터" />}
                                         renderValue={(s) => `${s.length}개 반`}
                                     >
                                         {availableClasses.map((c) => (
                                             <MenuItem key={c} value={c}>
                                                 <Checkbox checked={selectedClasses.indexOf(c) > -1} size="small" />
-                                                <ListItemText primary={`${c}반`} />
+                                                <ListItemText primary={c} />
                                             </MenuItem>
                                         ))}
                                     </Select>
@@ -416,7 +422,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                             size="medium"
                             startIcon={<DownloadIcon />}
                             variant="contained"
-                            onClick={() => downloadCSV(filteredAndSortedRows, dates, grade, classNum, pendingChanges)}
+                            onClick={() => downloadCSV(filteredAndSortedRows, dates, scopeLabel, showClass, pendingChanges)}
                             disabled={filteredAndSortedRows.length === 0}
                         >
                             내보내기
@@ -430,7 +436,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                 <Typography variant="body2" color="text.secondary">
                     검색 결과: 총 {filteredAndSortedRows.length}명
                 </Typography>
-                
+
                 {pendingCount > 0 && (
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                         <Typography variant="body2" color="warning.main" fontWeight="bold">
@@ -465,7 +471,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                     <TableHead>
                         <TableRow>
                             {showClass && (
-                                <TableCell align="center" sx={{ ...stickyCell, left: 0, minWidth: 48, zIndex: 3 }}>반</TableCell>
+                                <TableCell align="center" sx={{ ...stickyCell, left: 0, minWidth: 72, zIndex: 3 }}>반</TableCell>
                             )}
                             <TableCell sx={{ ...stickyCell, left: nameLeft, minWidth: 80, zIndex: 3 }}>이름</TableCell>
                             {dates.map((d) => (
@@ -507,7 +513,7 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                                     <TableRow key={row.student.id} hover>
                                         {showClass && (
                                             <TableCell align="center" sx={{ ...stickyCell, left: 0, fontWeight: 'bold' }}>
-                                                {row.student.classNum}반
+                                                {gradeOf(row) ? `${gradeOf(row).replace(/^\d+\./, '')} ` : ''}{classOf(row)}
                                             </TableCell>
                                         )}
                                         <TableCell sx={{ ...stickyCell, left: nameLeft }}>
@@ -518,17 +524,17 @@ export default function AttendanceMatrix({ rows, dates, grade, classNum, onSaveB
                                             const pending = pendingChanges[key];
                                             const originalRecord = row.records[d];
                                             const isPending = !!pending;
-                                            
-                                            const currentRecord = isPending 
-                                                ? (pending.status !== undefined ? { status: pending.status, reason: pending.reason } : undefined) 
+
+                                            const currentRecord = isPending
+                                                ? (pending.status !== undefined ? { status: pending.status, reason: pending.reason } : undefined)
                                                 : originalRecord;
-                                                
+
                                             const currentStatus = isPending ? pending.status : originalRecord?.status;
 
                                             return (
                                                 <TableCell key={d} align="center" sx={{ p: 0.5 }}>
-                                                    <StatusCell 
-                                                        record={currentRecord} 
+                                                    <StatusCell
+                                                        record={currentRecord}
                                                         showReason={dates.length === 1}
                                                         isPending={isPending}
                                                         rowIndex={rowIndex}

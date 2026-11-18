@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Student } from '@/types';
-import { fetchStudents, fetchAttendance, saveAttendanceApi, deleteAttendanceApi } from '@/lib/api-client';
+import { Student, StudentScope } from '@/types';
+import { fetchStudentsIn, fetchAttendanceIn, saveAttendanceApi, deleteAttendanceApi } from '@/lib/api-client';
 
 export interface AttendanceMatrixRow {
     student: Student;
@@ -29,7 +29,11 @@ export interface UseAdminAttendanceResult {
     saveBatchAttendance: (changes: Record<string, AttendanceChange>, adminPassword?: string) => Promise<boolean>;
 }
 
-export function useAdminAttendance(grade: string, classNum: number): UseAdminAttendanceResult {
+// scope가 null이면(부서 목록을 아직 못 불러옴) 아무것도 불러오지 않음
+export function useAdminAttendance(scope: StudentScope | null): UseAdminAttendanceResult {
+    const departmentId = scope?.departmentId;
+    const gradeId = scope?.gradeId;
+    const classId = scope?.classId;
     const [students, setStudents] = useState<Student[]>([]);
     const [rows, setRows] = useState<AttendanceMatrixRow[]>([]);
     const [allDates, setAllDates] = useState<string[]>([]);
@@ -40,17 +44,17 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
 
     // isSilent: 저장 후 갱신처럼 화면(필터·스크롤)을 유지한 채 백그라운드로 다시 불러올 때
     const fetchData = useCallback(async (isSilent = false) => {
-        if (!grade) return;
+        if (!departmentId) return;
+        const target = { departmentId, gradeId, classId };
         const requestId = ++latestRequestRef.current;
         if (!isSilent) {
             setLoading(true);
             setError(null);
         }
         try {
-            // grade='all', classNum=0 은 API가 전 학년/전체 반으로 처리
             const [fetchedStudents, records] = await Promise.all([
-                fetchStudents(grade, classNum),
-                fetchAttendance(grade, classNum),
+                fetchStudentsIn(target),
+                fetchAttendanceIn(target),
             ]);
             if (requestId !== latestRequestRef.current) return;
 
@@ -67,11 +71,7 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
             }
 
             const matrixRows: AttendanceMatrixRow[] = [...fetchedStudents]
-                .sort((a, b) => {
-                    if (a.grade !== b.grade) return a.grade.localeCompare(b.grade);
-                    if (a.classNum !== b.classNum) return a.classNum - b.classNum;
-                    return a.name.localeCompare(b.name, 'ko-KR');
-                })
+                .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name, 'ko-KR'))
                 .map((student) => {
                     const records = attendanceMap[student.id] ?? {};
                     const presentCount = Object.values(records).filter((v) => v.status).length;
@@ -90,7 +90,7 @@ export function useAdminAttendance(grade: string, classNum: number): UseAdminAtt
         } finally {
             if (requestId === latestRequestRef.current) setLoading(false);
         }
-    }, [grade, classNum]);
+    }, [departmentId, gradeId, classId]);
 
     // adminPassword: 삭제("기록 없음")가 포함된 경우에만 필요
     const saveBatchAttendance = useCallback(async (changes: Record<string, AttendanceChange>, adminPassword?: string) => {

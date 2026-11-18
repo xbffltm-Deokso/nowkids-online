@@ -36,11 +36,13 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     const body = asObject(await readJson(req));
     let condition: SQL | undefined;
     let target: string;
+    let summaryDepartment: string | undefined;
     if (body.departmentId !== undefined) {
         if (typeof body.departmentId !== 'string' || !UUID_RE.test(body.departmentId)) badRequest('부서가 올바르지 않습니다.');
         const [dep] = await db.select({ name: departments.name }).from(departments).where(eq(departments.id, body.departmentId));
         if (!dep) throw new ApiError(404, '부서를 찾을 수 없습니다.');
         condition = eq(students.departmentId, body.departmentId);
+        summaryDepartment = body.departmentId;
         target = dep.name;
         if (body.gradeId) {
             if (typeof body.gradeId !== 'string' || !UUID_RE.test(body.gradeId)) badRequest('학년이 올바르지 않습니다.');
@@ -67,7 +69,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
             .leftJoin(classes, eq(classes.id, students.classId))
             .where(condition)
             .orderBy(asc(grades.sortOrder), asc(classes.sortOrder), asc(students.grade), asc(students.classNum), asc(students.name)),
-        computeAttendanceSummaries(),
+        computeAttendanceSummaries(undefined, summaryDepartment),
     ]);
     const active = rows.filter((r) => isActiveStatus(r.student.status));
     const summaryOf = new Map(groups.summaries.map((s) => [s.studentId, s]));

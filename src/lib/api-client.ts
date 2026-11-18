@@ -1,4 +1,4 @@
-import { Student, AttendanceRecord, AttendanceSummaryResult, PrivateImportResult, AdminLog, PromoteResult } from '@/types';
+import { Student, AttendanceRecord, AttendanceSummaryResult, PrivateImportResult, AdminLog, PromoteResult, StudentScope } from '@/types';
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
     const res = await fetch(url, init);
@@ -14,7 +14,32 @@ export function fetchStudents(grade: string, classNum: number): Promise<Student[
     return request(`/api/students?grade=${encodeURIComponent(grade)}&classNum=${classNum}`);
 }
 
-export function saveStudentApi(student: Student): Promise<Student> {
+function scopeParams(scope: StudentScope): URLSearchParams {
+    const params = new URLSearchParams({ departmentId: scope.departmentId });
+    if (scope.gradeId) params.set('gradeId', scope.gradeId);
+    if (scope.classId) params.set('classId', scope.classId);
+    return params;
+}
+
+// 부서(학년·반) 기준 학생 목록 — 학년·반 이름(gradeLabel·classLabel) 포함
+export function fetchStudentsIn(scope: StudentScope): Promise<Student[]> {
+    return request(`/api/students?${scopeParams(scope)}`);
+}
+
+export function fetchAttendanceIn(
+    scope: StudentScope,
+    options: { date?: string; from?: string } = {}
+): Promise<AttendanceRecord[]> {
+    const params = scopeParams(scope);
+    if (options.date) params.set('date', options.date);
+    if (options.from) params.set('from', options.from);
+    return request(`/api/attendance?${params}`);
+}
+
+// 학생 추가·수정 — 부서 기준이면 departmentId·gradeId·classId, 예전 화면은 grade·classNum
+export function saveStudentApi(
+    student: Partial<Student> & Pick<Student, 'id' | 'name'>
+): Promise<Student> {
     return request('/api/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -60,8 +85,8 @@ export function saveAttendanceApi(
 }
 
 // 학생별 최근 52주 출석률·출석 그룹·연속 결석
-export function fetchAttendanceGroups(): Promise<AttendanceSummaryResult> {
-    return request('/api/attendance-groups');
+export function fetchAttendanceGroups(departmentId?: string): Promise<AttendanceSummaryResult> {
+    return request(`/api/attendance-groups${departmentId ? `?departmentId=${departmentId}` : ''}`);
 }
 
 // 관리자 비밀번호 헤더 (헤더에는 ASCII만 들어가므로 인코딩)

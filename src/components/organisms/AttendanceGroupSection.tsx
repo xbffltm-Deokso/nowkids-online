@@ -28,8 +28,8 @@ const GROUP_RANGE: Record<AttendanceGroup, string> = {
 const ABSENT_STREAK_ALERT = 4;
 
 // 출석 통계 탭 하단 — 52주 출석 그룹 분포와 관심 필요 학생 목록
-export default function AttendanceGroupSection({ rows }: { rows: AttendanceMatrixRow[] }) {
-    const { result, byStudent, error, loading } = useAttendanceGroups();
+export default function AttendanceGroupSection({ rows, departmentId }: { rows: AttendanceMatrixRow[]; departmentId: string }) {
+    const { result, byStudent, error, loading } = useAttendanceGroups(departmentId);
 
     const activeStudents = useMemo(
         () => rows.map((r) => r.student).filter((s) => isActiveStatus(s.status)),
@@ -106,8 +106,8 @@ export default function AttendanceGroupSection({ rows }: { rows: AttendanceMatri
                         <TableBody>
                             {watchList.map(({ student, summary }) => (
                                 <TableRow key={student.id} hover>
-                                    <TableCell>{student.grade}</TableCell>
-                                    <TableCell>{student.classNum}반</TableCell>
+                                    <TableCell>{student.gradeLabel || '-'}</TableCell>
+                                    <TableCell>{student.classLabel ?? `${student.classNum}반`}</TableCell>
                                     <TableCell>{student.name}</TableCell>
                                     <TableCell align="center">
                                         <AttendanceGroupChip summary={summary} />

@@ -48,7 +48,7 @@ function NameList({ title, names, severity }: { title: string; names: string[]; 
 }
 
 // Admin "진급·개인정보" 탭 — 개인정보는 화면에 표시하지 않고, 비밀번호 확인 후 서버에서만 처리
-export default function AdminDataPanel() {
+export default function AdminDataPanel({ onDepartmentsChanged }: { onDepartmentsChanged?: () => void } = {}) {
     const { withPassword, dialogProps } = useAdminPassword();
     const [error, setError] = useState<string | null>(null);
     const [logs, setLogs] = useState<AdminLog[]>([]);
@@ -161,7 +161,12 @@ export default function AdminDataPanel() {
 
             {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
 
-            <DepartmentManagerSection onChanged={() => setDeptVersion((v) => v + 1)} />
+            <DepartmentManagerSection
+                onChanged={() => {
+                    setDeptVersion((v) => v + 1);
+                    onDepartmentsChanged?.();
+                }}
+            />
             <DepartmentLinksSection key={deptVersion} />
 
             {/* 1. 교적 엑셀 가져오기 */}

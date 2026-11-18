@@ -1,4 +1,4 @@
-import { and, gte, lte, min } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte, min } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { attendanceRecords, students } from '@/lib/schema';
 import { addWeeks, getSundayOfCurrentWeek } from '@/utils/dateUtils';
@@ -19,22 +19,38 @@ export function groupOf(rate: number): AttendanceGroup {
     return 'E';
 }
 
+function inDepartment(departmentId?: string) {
+    if (!departmentId) return undefined;
+    return inArray(
+        attendanceRecords.studentId,
+        db.select({ id: students.id }).from(students).where(eq(students.departmentId, departmentId))
+    );
+}
+
 function isSunday(date: string): boolean {
     return new Date(`${date}T00:00:00Z`).getUTCDay() === 0;
 }
 
-export async function computeAttendanceSummaries(to = getSundayOfCurrentWeek()): Promise<AttendanceSummaryResult> {
+// departmentId를 주면 그 부서 학생만 (출석부를 쓴 주 판단도 그 부서 재적 기준)
+export async function computeAttendanceSummaries(
+    to = getSundayOfCurrentWeek(),
+    departmentId?: string
+): Promise<AttendanceSummaryResult> {
     const from = addWeeks(to, -(GROUP_WINDOW_WEEKS - 1));
 
     const [studentRows, records, firstDates] = await Promise.all([
-        db.select({ id: students.id, status: students.status }).from(students),
+        db
+            .select({ id: students.id, status: students.status })
+            .from(students)
+            .where(departmentId ? eq(students.departmentId, departmentId) : undefined),
         db
             .select({ studentId: attendanceRecords.studentId, date: attendanceRecords.date, status: attendanceRecords.status })
             .from(attendanceRecords)
-            .where(and(gte(attendanceRecords.date, from), lte(attendanceRecords.date, to))),
+            .where(and(gte(attendanceRecords.date, from), lte(attendanceRecords.date, to), inDepartment(departmentId))),
         db
             .select({ studentId: attendanceRecords.studentId, first: min(attendanceRecords.date) })
             .from(attendanceRecords)
+            .where(inDepartment(departmentId))
             .groupBy(attendanceRecords.studentId),
     ]);
 

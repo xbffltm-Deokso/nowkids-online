@@ -2,8 +2,6 @@
 
 import { useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
 import Button from '@mui/material/Button';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -14,13 +12,13 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
 import EditIcon from '@mui/icons-material/Edit';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import SearchIcon from '@mui/icons-material/Search';
 import Alert from '@mui/material/Alert';
-import AttendanceGroupChip from '@/components/atoms/AttendanceGroupChip';
-import { useAttendanceGroups } from '@/hooks/useAttendanceGroups';
-import { isActiveStatus } from '@/utils/studentStatus';
 import CircularProgress from '@mui/material/CircularProgress';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
@@ -31,130 +29,115 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import { Student } from '@/types';
-import { useStudentManagement } from '@/hooks/useStudentManagement';
+import AttendanceGroupChip from '@/components/atoms/AttendanceGroupChip';
+import DepartmentScopeSelect from '@/components/molecules/DepartmentScopeSelect';
 import StudentFormDialog from '@/components/molecules/StudentFormDialog';
+import { useAttendanceGroups } from '@/hooks/useAttendanceGroups';
+import { useStudentManagement, StudentInput } from '@/hooks/useStudentManagement';
+import { isActiveStatus } from '@/utils/studentStatus';
+import { DepartmentDetail, Student } from '@/types';
 
-const ALL_GRADES = ['4.믿음', '5.소망', '6.사랑'];
-const ALL_CLASSES = [1, 2, 3, 4];
-
-const STATUS_COLOR: Record<string, 'success' | 'warning' | 'default'> = {
+const STATUS_COLOR: Record<string, 'success' | 'warning' | 'info' | 'default'> = {
     재학: 'success',
+    새친구: 'info',
     휴학: 'warning',
     전학: 'default',
     진급: 'default',
 };
 
-export default function StudentManagementPanel() {
-    const [tabIndex, setTabIndex] = useState(0); // 0=전체학생, 1=학년별
-    const [filterGrade, setFilterGrade] = useState(ALL_GRADES[0]);
-    const [filterClass, setFilterClass] = useState(1);
+// 학생 관리 — 고른 부서의 학생 목록(학년·반으로 좁히기), 추가·수정·부서 이동·전학 처리
+export default function StudentManagementPanel({
+    department,
+    departments,
+    onChanged,
+}: {
+    department: DepartmentDetail;
+    departments: DepartmentDetail[];
+    onChanged?: () => void;
+}) {
+    const [gradeId, setGradeId] = useState('');
+    const [classId, setClassId] = useState('');
+    const [search, setSearch] = useState('');
     const [showInactive, setShowInactive] = useState(false);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<Student | null>(null);
     const [confirmDeactivate, setConfirmDeactivate] = useState<Student | null>(null);
 
-    // 전체학생 탭: 모든 학생 로드
-    const allStudentsHook = useStudentManagement();
-    // 학년별 탭: 선택한 학년/반만 로드
-    const classStudentsHook = useStudentManagement(filterGrade, filterClass);
-
-    const groups = useAttendanceGroups();
-
-    const isAllTab = tabIndex === 0;
-    const { students: rawStudents, loading, error, refresh, saveStudent, deactivateStudent } =
-        isAllTab ? allStudentsHook : classStudentsHook;
-
-    const students = useMemo(
-        () => (showInactive ? rawStudents : rawStudents.filter((s) => isActiveStatus(s.status))),
-        [rawStudents, showInactive]
+    const scope = useMemo(
+        () => ({ departmentId: department.id, gradeId: gradeId || undefined, classId: classId || undefined }),
+        [department.id, gradeId, classId]
     );
+    const { students: rawStudents, loading, error, saveStudent, deactivateStudent } = useStudentManagement(scope);
+    const groups = useAttendanceGroups(department.id);
 
-    const handleEdit = (student: Student) => {
-        setEditTarget(student);
-        setDialogOpen(true);
-    };
+    const students = useMemo(() => {
+        const term = search.replace(/\s+/g, '');
+        return rawStudents.filter(
+            (s) => (showInactive || isActiveStatus(s.status)) && (!term || s.name.replace(/\s+/g, '').includes(term))
+        );
+    }, [rawStudents, showInactive, search]);
 
-    const handleAddNew = () => {
-        setEditTarget(null);
-        setDialogOpen(true);
-    };
-
-    const handleSave = async (data: Omit<Student, 'id'> & { id?: string }) => {
+    const handleSave = async (data: StudentInput) => {
         await saveStudent(data);
+        onChanged?.();
     };
 
     const handleDeactivateConfirm = async () => {
         if (!confirmDeactivate) return;
         await deactivateStudent(confirmDeactivate);
         setConfirmDeactivate(null);
+        onChanged?.();
     };
+
+    const hasGrades = department.grades.length > 0;
 
     return (
         <Box>
-            <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)} sx={{ mb: 2 }}>
-                <Tab label="전체 학생" />
-                <Tab label="학년별" />
-            </Tabs>
-
-            {tabIndex === 1 && (
-                <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                    <FormControl size="small" sx={{ minWidth: 140 }}>
-                        <InputLabel>학년</InputLabel>
-                        <Select
-                            value={filterGrade}
-                            label="학년"
-                            onChange={(e) => setFilterGrade(e.target.value)}
-                        >
-                            {ALL_GRADES.map((g) => (
-                                <MenuItem key={g} value={g}>{g}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                    <FormControl size="small" sx={{ minWidth: 100 }}>
-                        <InputLabel>반</InputLabel>
-                        <Select
-                            value={filterClass}
-                            label="반"
-                            onChange={(e) => setFilterClass(Number(e.target.value))}
-                        >
-                            {ALL_CLASSES.map((c) => (
-                                <MenuItem key={c} value={c}>{c}반</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Stack>
-            )}
-
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Stack direction="row" alignItems="center" spacing={2}>
-                    <Typography variant="body2" color="text.secondary">
-                        총 {students.length}명
-                    </Typography>
-                    <FormControlLabel
-                        control={
-                            <Switch
-                                size="small"
-                                checked={showInactive}
-                                onChange={(e) => setShowInactive(e.target.checked)}
-                            />
-                        }
-                        label="전학·진급 학생 포함"
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} justifyContent="space-between" sx={{ mb: 2 }}>
+                <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center">
+                    <DepartmentScopeSelect
+                        department={department}
+                        gradeId={gradeId}
+                        classId={classId}
+                        onGradeChange={setGradeId}
+                        onClassChange={setClassId}
+                    />
+                    <TextField
+                        size="small"
+                        placeholder="이름 검색"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon fontSize="small" />
+                                </InputAdornment>
+                            ),
+                        }}
+                        sx={{ width: 180 }}
                     />
                 </Stack>
-                <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<PersonAddIcon />}
-                    onClick={handleAddNew}
-                >
-                    학생 추가
-                </Button>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                    <FormControlLabel
+                        control={<Switch size="small" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />}
+                        label="전학·진급 포함"
+                    />
+                    <Button
+                        variant="contained"
+                        startIcon={<PersonAddIcon />}
+                        onClick={() => {
+                            setEditTarget(null);
+                            setDialogOpen(true);
+                        }}
+                    >
+                        학생 추가
+                    </Button>
+                </Stack>
             </Stack>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                {department.name} · {students.length}명
+            </Typography>
 
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
@@ -166,10 +149,9 @@ export default function StudentManagementPanel() {
                 <TableContainer component={Paper} variant="outlined">
                     <Table size="small">
                         <TableHead>
-                            <TableRow sx={{ bgcolor: 'grey.50' }}>
-                                <TableCell>학년</TableCell>
+                            <TableRow>
+                                {hasGrades && <TableCell>학년</TableCell>}
                                 <TableCell>반</TableCell>
-                                <TableCell align="center">번호</TableCell>
                                 <TableCell>이름</TableCell>
                                 <TableCell align="center">성별</TableCell>
                                 <TableCell align="center">상태</TableCell>
@@ -180,52 +162,38 @@ export default function StudentManagementPanel() {
                         <TableBody>
                             {students.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                                        학생 데이터가 없습니다.
+                                    <TableCell colSpan={7} align="center" sx={{ py: 5, color: 'text.secondary' }}>
+                                        학생이 없습니다.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 students.map((student) => (
-                                    <TableRow
-                                        key={student.id}
-                                        sx={{
-                                            opacity: isActiveStatus(student.status) ? 1 : 0.5,
-                                            '&:hover': { bgcolor: 'action.hover' },
-                                        }}
-                                    >
-                                        <TableCell>{student.grade}</TableCell>
-                                        <TableCell>{student.classNum}반</TableCell>
-                                        <TableCell align="center">{student.number}</TableCell>
-                                        <TableCell>{student.name}</TableCell>
+                                    <TableRow key={student.id} hover sx={{ opacity: isActiveStatus(student.status) ? 1 : 0.5 }}>
+                                        {hasGrades && <TableCell>{student.gradeLabel || '-'}</TableCell>}
+                                        <TableCell>{student.classLabel ?? '-'}</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>{student.name}</TableCell>
+                                        <TableCell align="center">{student.gender === 'M' ? '남' : '여'}</TableCell>
                                         <TableCell align="center">
-                                            {student.gender === 'M' ? '남' : '여'}
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Chip
-                                                label={student.status}
-                                                size="small"
-                                                color={STATUS_COLOR[student.status] ?? 'default'}
-                                            />
+                                            <Chip label={student.status} size="small" color={STATUS_COLOR[student.status] ?? 'default'} variant="outlined" />
                                         </TableCell>
                                         <TableCell align="center">
                                             <AttendanceGroupChip summary={groups.byStudent.get(student.id)} />
                                         </TableCell>
-                                        <TableCell align="center">
-                                            <Tooltip title="수정">
+                                        <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
+                                            <Tooltip title="수정·부서 이동">
                                                 <IconButton
                                                     size="small"
-                                                    onClick={() => handleEdit(student)}
+                                                    onClick={() => {
+                                                        setEditTarget(student);
+                                                        setDialogOpen(true);
+                                                    }}
                                                 >
                                                     <EditIcon fontSize="small" />
                                                 </IconButton>
                                             </Tooltip>
                                             {isActiveStatus(student.status) && (
-                                                <Tooltip title="비활성화 (전학 처리)">
-                                                    <IconButton
-                                                        size="small"
-                                                        color="error"
-                                                        onClick={() => setConfirmDeactivate(student)}
-                                                    >
+                                                <Tooltip title="전학 처리">
+                                                    <IconButton size="small" color="error" onClick={() => setConfirmDeactivate(student)}>
                                                         <PersonOffIcon fontSize="small" />
                                                     </IconButton>
                                                 </Tooltip>
@@ -242,20 +210,21 @@ export default function StudentManagementPanel() {
             <StudentFormDialog
                 open={dialogOpen}
                 student={editTarget}
-                defaultGrade={tabIndex === 1 ? filterGrade : ALL_GRADES[0]}
-                defaultClassNum={tabIndex === 1 ? filterClass : 1}
+                department={department}
+                departments={departments}
+                defaultGradeId={gradeId}
+                defaultClassId={classId}
                 onClose={() => setDialogOpen(false)}
                 onSave={handleSave}
             />
 
-            {/* 비활성화 확인 다이얼로그 */}
             <Dialog open={!!confirmDeactivate} onClose={() => setConfirmDeactivate(null)}>
-                <DialogTitle>학생 비활성화</DialogTitle>
+                <DialogTitle>전학 처리</DialogTitle>
                 <DialogContent>
                     <Typography>
-                        <strong>{confirmDeactivate?.name}</strong> 학생을 전학 처리하시겠습니까?
+                        <strong>{confirmDeactivate?.name}</strong> 학생을 전학 처리할까요?
                         <br />
-                        출석 기록은 유지되며 상태만 변경됩니다.
+                        출석 기록은 그대로 남고 상태만 바뀝니다.
                     </Typography>
                 </DialogContent>
                 <DialogActions>

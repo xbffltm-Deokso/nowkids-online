@@ -9,6 +9,20 @@ export interface Student {
     name: string;
     gender: Gender;
     status: StudentStatus;
+    // 부서 구조 (부서 기준 조회에서 채워짐)
+    departmentId?: string | null;
+    gradeId?: string | null;
+    classId?: string | null;
+    gradeLabel?: string; // 학년 이름 (학년 없는 부서는 빈 문자열)
+    classLabel?: string; // 반 이름 (없으면 "미배정")
+    order?: number; // 학년·반 표시 순서
+}
+
+// 학생 조회 범위 — 부서(필수)와 학년·반(선택). classId 'none' = 반 미배정
+export interface StudentScope {
+    departmentId: string;
+    gradeId?: string;
+    classId?: string;
 }
 
 export type AttendanceStatus = boolean; // TRUE = 출석, FALSE = 결석

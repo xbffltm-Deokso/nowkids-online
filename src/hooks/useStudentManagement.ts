@@ -1,19 +1,34 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Student } from '@/types';
-import { fetchStudents, saveStudentApi } from '@/lib/api-client';
+import { Student, StudentScope } from '@/types';
+import { fetchStudentsIn, saveStudentApi } from '@/lib/api-client';
+
+// 학생 추가·수정 입력 — 부서·학년·반은 id로
+export interface StudentInput {
+    id?: string;
+    departmentId: string;
+    gradeId: string | null;
+    classId: string | null;
+    number: number;
+    name: string;
+    gender: Student['gender'];
+    status: Student['status'];
+}
 
 export interface UseStudentManagementResult {
     students: Student[];
     loading: boolean;
     error: string | null;
     refresh: () => void;
-    saveStudent: (data: Omit<Student, 'id'> & { id?: string }) => Promise<void>;
+    saveStudent: (data: StudentInput) => Promise<void>;
     deactivateStudent: (student: Student) => Promise<void>;
 }
 
-export function useStudentManagement(grade?: string, classNum?: number): UseStudentManagementResult {
+export function useStudentManagement(scope: StudentScope | null): UseStudentManagementResult {
+    const departmentId = scope?.departmentId;
+    const gradeId = scope?.gradeId;
+    const classId = scope?.classId;
     const [students, setStudents] = useState<Student[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -21,22 +36,19 @@ export function useStudentManagement(grade?: string, classNum?: number): UseStud
     const latestRequestRef = useRef(0);
 
     const fetchData = useCallback(async () => {
+        if (!departmentId) return;
         const requestId = ++latestRequestRef.current;
         setLoading(true);
         setError(null);
         try {
-            const allStudents =
-                grade && classNum
-                    ? await fetchStudents(grade, classNum)
-                    : await fetchStudents('all', 0);
+            const allStudents = await fetchStudentsIn({ departmentId, gradeId, classId });
             if (requestId !== latestRequestRef.current) return;
 
             setStudents(
-                allStudents.sort((a, b) => {
-                    if (a.grade !== b.grade) return a.grade.localeCompare(b.grade);
-                    if (a.classNum !== b.classNum) return a.classNum - b.classNum;
-                    return a.number - b.number;
-                })
+                allStudents.sort(
+                    (a, b) =>
+                        (a.order ?? 0) - (b.order ?? 0) || a.number - b.number || a.name.localeCompare(b.name, 'ko-KR')
+                )
             );
         } catch (err: any) {
             if (requestId !== latestRequestRef.current) return;
@@ -46,13 +58,13 @@ export function useStudentManagement(grade?: string, classNum?: number): UseStud
         } finally {
             if (requestId === latestRequestRef.current) setLoading(false);
         }
-    }, [grade, classNum]);
+    }, [departmentId, gradeId, classId]);
 
     useEffect(() => {
         fetchData();
     }, [fetchData]);
 
-    const saveStudent = async (data: Omit<Student, 'id'> & { id?: string }) => {
+    const saveStudent = async (data: StudentInput) => {
         // 새 학생 ID는 UUID — 이름·번호로 만들면 동명이인이 기존 학생을 덮어씀
         const id = data.id || crypto.randomUUID();
         await saveStudentApi({ ...data, id });
@@ -60,7 +72,18 @@ export function useStudentManagement(grade?: string, classNum?: number): UseStud
     };
 
     const deactivateStudent = async (student: Student) => {
-        await saveStudentApi({ ...student, status: '전학' });
+        await saveStudentApi({
+            id: student.id,
+            name: student.name,
+            number: student.number,
+            gender: student.gender,
+            departmentId: student.departmentId,
+            gradeId: student.gradeId,
+            classId: student.classId,
+            grade: student.grade,
+            classNum: student.classNum,
+            status: '전학',
+        });
         await fetchData();
     };
 

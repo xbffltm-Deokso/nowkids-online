@@ -3,40 +3,28 @@ import { and, asc, desc, eq, gte, or, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { attendanceRecords, students } from '@/lib/schema';
 import { requireAdmin } from '@/lib/admin-auth';
+import { studentScope } from '@/lib/student-scope';
 import {
     asList,
     asObject,
-    badRequest,
     optionalString,
     readJson,
     requireBoolean,
     requireDate,
-    requireInt,
     requireString,
     withErrorHandling,
 } from '@/lib/api-utils';
 
-// GET /api/attendance?grade=&classNum=&date=&from=
+// GET /api/attendance?departmentId=&gradeId=&classId=&date=&from= (또는 예전 ?grade=&classNum=)
 // date를 생략하면 해당 학년/반의 전체 출석 이력을 반환, from을 주면 그 날짜 이후만 반환
 export const GET = withErrorHandling(async (req: NextRequest) => {
     const params = req.nextUrl.searchParams;
-    const grade = params.get('grade');
-    const classNum = params.get('classNum');
     const date = params.get('date');
     const from = params.get('from');
 
-    if (!grade) {
-        badRequest('grade는 필수입니다.');
-    }
-
-    // grade=all 이면 전 학년, classNum=0 이면 전체 반
-    const conditions = [];
-    if (grade !== 'all') {
-        conditions.push(eq(students.grade, grade));
-    }
-    if (classNum !== null && classNum !== '0') {
-        conditions.push(eq(students.classNum, requireInt(classNum, 'classNum', 1)));
-    }
+    // 부서(학년·반) 또는 예전 학년 문자열·반 번호 범위
+    const scope = studentScope(params);
+    const conditions = scope ? [scope] : [];
     if (date) {
         conditions.push(eq(attendanceRecords.date, requireDate(date, 'date')));
     }
